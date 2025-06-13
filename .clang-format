@@ -1,0 +1,59 @@
+BasedOnStyle: Google
+
+ColumnLimit: 80
+
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+
+AccessModifierOffset: -4
+BreakBeforeBraces: Attach
+
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+InsertBraces: true
+
+SpacesBeforeTrailingComments: 2
+
+SpacesInAngles: false
+
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: false
+
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 2
+
+MaxEmptyLinesToKeep: 1
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: false
+  AtStartOfFile: false
+
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+BreakBeforeBinaryOperators: All
+
+PointerAlignment: Right
+ReferenceAlignment: Right
+
+SpacesInContainerLiterals: false
+
+BreakInheritanceList: AfterColon
+BreakConstructorInitializers: AfterColon
+
+BinPackArguments: false
+BinPackParameters: true
+
+BreakStringLiterals: true
+
+IncludeBlocks: Regroup
+SortIncludes: true
+
+IndentAccessModifiers: false
+IndentCaseLabels: false
+IndentRequiresClause: true
