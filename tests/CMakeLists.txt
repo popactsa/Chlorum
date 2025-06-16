@@ -33,7 +33,7 @@ target_include_directories(${PROJECT_NAME}_tests PRIVATE
 )
 
 get_target_property(INCLUDE_DIRS ${PROJECT_NAME}_tests INCLUDE_DIRECTORIES)
-message(WARNING "Include directories for my_target: ${INCLUDE_DIRS}")
+message(WARNING "Include directories for ${PROJECT_NAME}_tests: ${INCLUDE_DIRS}")
 
 enable_testing()
 add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)

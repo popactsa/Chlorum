@@ -1,5 +1,6 @@
-file(GLOB_RECURSE SOURCES LIST_DIRECTORIES true *.h *.hpp *.cpp)
-set(SOURCES ${SOURCES})
+file(GLOB_RECURSE SOURCES_CXX LIST_DIRECTORIES true *.hpp *.cpp)
+file(GLOB_RECURSE SOURCES_C LIST_DIRECTORIES true *.h *.c)
+set(SOURCES ${SOURCES_CXX} ${SOURCES_C})
 add_executable(${PROJECT_NAME}_run ${SOURCES})
 add_library(${PROJECT_NAME}_lib STATIC ${SOURCES})
 function(add_common_flags target)
