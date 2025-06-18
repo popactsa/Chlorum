@@ -12,7 +12,7 @@ function(add_common_flags target)
         "-march=native"
         "-fdiagnostics-color=always"
         "$<$<CONFIG:Release>:-O2>"
-        "$<$<CONFIG:Debug>:-O0;-g;-fsanitize=address>"
+        "$<$<CONFIG:Debug>:-O0;-g;-fsanitize=address;-DDASH_DEBUG>"
     )
     target_link_options(${target} PRIVATE
         $<$<CONFIG:Debug>:-fsanitize=address>

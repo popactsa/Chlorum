@@ -6,8 +6,11 @@ extern "C" {
 #include <netinet/in.h>
 #include <sys/socket.h>
 }
+#include <cstdint>
+
 #include "Socket.hpp"
 
+namespace dash {
 class TcpSocket : public Socket {
 public:
     static constexpr int qDefaultMaxConn = SOMAXCONN;
@@ -23,8 +26,10 @@ class TcpConnection : public TcpSocket {
 public:
     TcpConnection() = default;
     void connect(const SocketAddrIn& addr);
-    std::size_t send(const void* data, std::size_t len);
-    std::size_t recv(void* buf, std::size_t len);
+    std::uint32_t send(const void* data, std::uint32_t len);
+    std::uint32_t recv(void* buf, std::uint32_t len);
+    void write_all(const char* rbuf, std::size_t sz);
+    void read_all(char* buf, std::size_t sz);
 
 protected:
     friend TcpListener;
@@ -39,5 +44,6 @@ public:
     void start(const SocketAddrIn& addr, int max_conn = qDefaultMaxConn);
     TcpConnection accept_client(SocketAddrIn* addr_ptr = nullptr);
 };
+}  // namespace dash
 
 #endif  // TCP_SOCKET_HPP

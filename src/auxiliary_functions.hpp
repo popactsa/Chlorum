@@ -54,6 +54,71 @@ template<typename TimerT = std::chrono::milliseconds>
     }};
 }
 
+template<typename E>
+    requires std::is_enum_v<E>
+class Flag {
+public:
+    Flag(E rhs) noexcept : bits_(static_cast<std::underlying_type_t<E>>(rhs)) {}
+    Flag() = default;
+    Flag(const Flag&) = default;
+    Flag& operator=(const Flag&) = default;
+
+    void reset() noexcept {
+        bits_.reset();
+    }
+    Flag& operator|=(const Flag& rhs) noexcept {
+        bits_ |= rhs.bits_;
+        return *this;
+    }
+    [[nodiscard]]
+    Flag operator|(const Flag& rhs) const noexcept {
+        Flag result = *this;
+        result |= rhs;
+        return result;
+    }
+    Flag& operator&=(const Flag& rhs) noexcept {
+        bits_ &= rhs.bits_;
+        return *this;
+    }
+    [[nodiscard]]
+    Flag operator&(const Flag& rhs) const noexcept {
+        Flag result = *this;
+        result &= rhs;
+        return result;
+    }
+
+    // Disable a certain flag
+    Flag& operator*=(const Flag& rhs) noexcept {
+        bits_ &= ~rhs.bits_;
+        return *this;
+    }
+
+    Flag& operator~() noexcept {
+        ~bits_;
+        return *this;
+    }
+
+    [[nodiscard]]
+    bool operator==(Flag rhs) const noexcept {
+        return bits_ == rhs.bits_;
+    }
+
+    [[nodiscard]]
+    bool operator!=(Flag rhs) const noexcept {
+        return bits_ != rhs.bits_;
+    }
+    [[nodiscard]]
+    bool any() const noexcept {
+        return bits_.any();
+    }
+    [[nodiscard]] operator bool() const noexcept {
+        return any();
+    }
+
+private:
+    std::bitset<sizeof(E) * CHAR_BIT> bits_;
+};
+
 constexpr std::vector<std::string> SplitString(std::string_view init,
                                                const char sep) noexcept;
 }  // namespace dash

@@ -8,24 +8,6 @@
 #include <type_traits>
 
 namespace dash {
-// A common class for exceptions thrown when checking parameters validity
-class SocketException : public std::exception {
-protected:
-    std::string msg_;
-
-public:
-    explicit SocketException(const std::string& msg) : msg_(msg) {}
-    const char* what() const noexcept override {
-        return msg_.c_str();
-    }
-};
-class SocketCreationError : public SocketException {
-public:
-    explicit SocketCreationError(const std::string& msg) :
-        SocketException(msg) {}
-    explicit SocketCreationError() :
-        SocketCreationError("Can't create a socket") {}
-};
 
 enum class ErrorAction { qIgnore, qThrowing, qTerminating, qLogging };
 inline static constexpr ErrorAction qDefaultErrorAction{ErrorAction::qLogging};

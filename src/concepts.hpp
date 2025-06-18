@@ -7,7 +7,7 @@
 namespace dash {
 // Containers with iterators, copy/move constructors, destructors
 // i.e std::array, std::vector
-template<class C>
+template<typename C>
 concept Container = requires(C a, const C b) {
     requires std::regular<C>;
     requires std::swappable<C>;
@@ -35,29 +35,29 @@ concept Container = requires(C a, const C b) {
     { a.empty() } -> std::same_as<bool>;
 };
 
-template<class C>
+template<typename C>
 concept HasBackInserterContainer = requires(C a, const C b) {
     requires Container<C>;
     { std::back_inserter(a) };
 };
 
-template<class T, template<class...> class U>
+template<typename T, template<typename...> typename U>
 inline constexpr bool is_instance_of_v = std::false_type{};
 
-template<template<class...> class U, class... Vs>
+template<template<typename...> typename U, typename... Vs>
 inline constexpr bool is_instance_of_v<U<Vs...>, U> = std::true_type{};
 
-template<class T, template<class...> class U>
+template<typename T, template<typename...> typename U>
 concept IsInstanceOf_v = is_instance_of_v<T, U>;
 
 // Convenient structs
-template<class T>
+template<typename T>
 struct RemoveCVRef : std::remove_cv<std::remove_reference_t<T>> {};
 
-template<class T>
+template<typename T>
 using RemoveCVRefT = typename RemoveCVRef<T>::type;
 
-template<class T, class U>
+template<typename T, typename U>
 struct IsBaseOf : std::is_base_of<RemoveCVRefT<T>, RemoveCVRefT<U>> {};
 
 // Hash-function to allow heterogenious search with std::string_view
@@ -76,25 +76,25 @@ struct StringHash {
 };
 
 // CRTP support; allows using of comparison etc.
-template<template<typename T> class CRTP_Base, class CRTP_Derived>
+template<template<typename T> typename CRTP_Base, typename CRTP_Derived>
 struct IsCRTPBaseOf :
     std::is_base_of<RemoveCVRefT<CRTP_Base<RemoveCVRefT<CRTP_Derived>>>,
                     RemoveCVRefT<CRTP_Derived>> {};
-template<template<typename T> class CRTP_Base, class CRTP_Derived>
+template<template<typename T> typename CRTP_Base, typename CRTP_Derived>
 concept IsCRTPBaseOf_v = IsCRTPBaseOf<CRTP_Base, CRTP_Derived>::value;
 
-template<class T, class U>
+template<typename T, typename U>
 concept IsBaseOf_v = IsBaseOf<T, U>::value;
 
 template<typename T, typename L>
 concept LabeledAs = requires(T t, L l) { l = t; };
 
 // Overloaded lambda trick(CRTP technique)
-template<class... Ts>
+template<typename... Ts>
 struct overloaded : Ts... {
     using Ts::operator()...;
 };
-template<class... Ts>
+template<typename... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 }  // namespace dash
