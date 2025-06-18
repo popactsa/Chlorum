@@ -1,6 +1,5 @@
 set(BINARY ${CMAKE_PROJECT_NAME}_tests)
 find_package(GTest REQUIRED)
-
 add_executable(${PROJECT_NAME}_tests
     main.cpp
 )

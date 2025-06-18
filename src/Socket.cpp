@@ -1,8 +1,6 @@
 #include "Socket.hpp"
 
-extern "C" {
 #include <asm-generic/socket.h>
-}
 namespace dash {
 Socket::Socket(int domain, int type, int protocol) :
     fd_{::socket(domain, type, protocol)} {

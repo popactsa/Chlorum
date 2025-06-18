@@ -22,7 +22,7 @@ struct FinalAction {
 };
 
 template<typename F>
-[[nodiscard]] auto Finally(F f) noexcept {
+[[nodiscard]] inline auto Finally(F f) noexcept {
     return FinalAction{f};
 }
 
@@ -35,7 +35,7 @@ template<typename T>
 inline constexpr const void* qID = &Type<T>::dummy_;
 
 template<typename T>
-static std::size_t ID() noexcept {
+inline static std::size_t ID() noexcept {
     return reinterpret_cast<std::size_t>(qID<T>);
 }
 
@@ -120,7 +120,17 @@ private:
 };
 
 constexpr std::vector<std::string> SplitString(std::string_view init,
-                                               const char sep) noexcept;
+                                               const char sep) noexcept {
+    std::vector<std::string> result;
+    for (auto it = init.cbegin(), prev = it; it != init.cend();) {
+        it = std::find(prev, init.cend(), sep);
+        if (prev != it) {
+            result.emplace_back(prev, it);
+        }
+        prev = it + 1;
+    }
+    return result;
+}
 }  // namespace dash
 
 #endif  // AUXILIARY_FUNCTIONS_H

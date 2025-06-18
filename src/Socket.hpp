@@ -1,11 +1,10 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
 
-extern "C" {
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-}
+
 #include <cstring>
 #include <type_traits>
 #include <utility>

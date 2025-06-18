@@ -1,13 +1,10 @@
+#include <arpa/inet.h>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <iostream>
 #include <thread>
-
-#include "Server.hpp"
-extern "C" {
-#include <arpa/inet.h>
-}
 
 #include "Client.hpp"
 #include "Protocol.hpp"

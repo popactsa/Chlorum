@@ -32,8 +32,5 @@ void Server::accept_clients() {
     dash::TcpConnection client = lsock_.accept_client();
     dash::proto::Packet packet;
     dash::proto::receive_packet(client, packet);
-    // std::ranges::for_each(packet.rbuf() + dash::proto::Packet::qHeaderLen,
-    //                       packet.rbuf() + packet.data_.size(),
-    //                       [](char c) { std::cout << c; });
-    // std::cout << std::endl;
+    std::cout << std::endl;
 }

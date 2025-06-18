@@ -49,12 +49,16 @@ void TcpConnection::write_all(const char* rbuf, std::size_t sz) {
 }
 
 void TcpConnection::read_all(char* buf, std::size_t sz) {
+    errno = 0;
     while (sz > 0) {
         ssize_t rv = ::read(*this, buf, sz);
         if (rv < 0) {
             throw dash::SocketException("Can't read from socket\n");
         } else if (rv == 0) {
-            throw dash::ConnectionEOF("Can't read from socket: EOF/Closed\n");
+            if (!(errno == EINTR)) {
+                throw dash::ConnectionEOF(
+                    "Can't read from socket: EOF/Closed\n");
+            }
         }
 #ifdef DASH_DEBUG
         std::cout << std::format("READ : {} of {}\n", rv, sz);

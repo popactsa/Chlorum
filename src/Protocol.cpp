@@ -5,21 +5,13 @@
 namespace dash {
 namespace proto {
 
-Packet::Packet(std::string_view msg) {
-    std::size_t msg_len = msg.size();
-    if (msg_len > qMaxMsgLen) {
-        throw dash::SocketException("Packet ctor message length exceeded\n");
-    }
-    std::memcpy(data_.data(), &msg_len, qHeaderLen);
-    if (msg.back() != '\0') {
-        std::memcpy(data_.data() + qHeaderLen, msg.data(), msg_len);
-        *(data_.data() + qHeaderLen + msg_len + 1) = '\0';
-    } else {
-        std::strcpy(data_.data() + qHeaderLen, msg.data());
-    }
-}
-
 Packet::Packet() noexcept {}
+
+Packet::Packet(std::string_view msg) {
+    std::uint32_t msg_len(msg.size());
+    std::memcpy(data_.data(), &msg_len, Packet::qHeaderLen);
+    std::memcpy(data_.data() + Packet::qHeaderLen, msg.data(), msg_len);
+}
 
 void receive_packet(TcpConnection& csock, Packet& wbuf) {
     csock.read_all(wbuf.wbuf(), Packet::qHeaderLen);
@@ -34,11 +26,11 @@ void receive_packet(TcpConnection& csock, Packet& wbuf) {
     } catch (const dash::ConnectionEOF& exc) {
         throw;
     }
+    wbuf.msg_sz_ = msg_len;
 #ifdef DASH_DEBUG
     std::cout << std::format(
         "Server received : {}\n",
-        std::string_view(wbuf.wbuf() + Packet::qHeaderLen,
-                         wbuf.wbuf() + Packet::qHeaderLen + msg_len));
+        std::string_view(wbuf.rmsg(), wbuf.rmsg() + wbuf.msg_sz_));
 #endif  // DASH_DEBUG
 }
 
