@@ -74,6 +74,13 @@ public:
         return msg_.c_str();
     }
 };
+
+class IncorrectSocketStatus : public SocketException {
+public:
+    explicit IncorrectSocketStatus(const std::string& msg) :
+        SocketException(msg) {}
+};
+
 class SocketCreationError : public SocketException {
 public:
     explicit SocketCreationError(const std::string& msg) :

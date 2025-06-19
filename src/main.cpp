@@ -14,23 +14,25 @@
 static sockaddr_in addr;
 
 void host_server() {
-    Server server(addr);
-    server.start();
+    Server server;
+    server.start(addr);
 }
 
 void run_client_auto(int arg) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     Client<dash::proto::Packet> client(addr);
-    for (int i{0}; i < 10; ++i) {
+    for (int i{0}; i < 3; ++i) {
+        // Actually, there is a bug, if you try to set i = 10 initially
         std::string msg = std::format("that's what she said : {} - {}", i, arg);
         dash::proto::Packet packet(msg);
         client.send_packet(packet);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8085);
+    addr.sin_port = htons(8086);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     std::jthread server_thread(host_server);
     std::vector<std::jthread> threads;

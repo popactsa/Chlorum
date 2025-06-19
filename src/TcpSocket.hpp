@@ -178,17 +178,26 @@ void TcpConnection<Packet_t>::read_all() {
             exc_case = ExcCase::qEOF;
             break;
         }
+#ifdef DASH_DEBUG
+        std::cout << std::format("READ : {} of capable {}\n", rv, sz);
+#endif  // DASH_DEBUG
         sz -= rv;
         wbuf += rv;
         recv_buf_head_ += rv;
-#ifdef DASH_DEBUG
-        std::cout << std::format("READ : {} of {}\n", rv, sz);
-#endif  // DASH_DEBUG
     }
     std::ranges::copy_n(
         wbuf_arr.cbegin(), wbuf_arr.size() - sz, std::back_inserter(recv_buf_));
+#ifdef DASH_DEBUG
+    auto recv_buf_old_size = recv_buf_.size();
+#endif  // DASH_DEBUG
     recv_buf_head_ -= lazy_erasure(recv_buf_, recv_buf_head_);
-    if (send_buf_head_ == 0) {
+#ifdef DASH_DEBUG
+    std::cout << std::format("Before erasure : {}\nAfter erasure : {}\n",
+                             recv_buf_old_size,
+                             recv_buf_.size())
+              << std::endl;
+#endif  // DASH_DEBUG
+    if (recv_buf_head_ == 0) {
         desire_ |= Desire::qWrite;
         desire_ *= Desire::qRead;
     }
@@ -214,7 +223,7 @@ template<typename Packet_t>
     requires PacketFormat<Packet_t>
 std::uint32_t TcpConnection<Packet_t>::lazy_erasure(
     std::vector<char>& buf, std::uint32_t head) noexcept {
-    if (head == buf.size()) {
+    if (head == buf.size() && head >= Packet_t::qPacketLen) {
         buf.clear();
         return head;
     } else if (head > head_trigger_dist) {
@@ -245,8 +254,7 @@ std::optional<Packet_t> TcpConnection<Packet_t>::try_request() noexcept {
     }
     auto recv_buf_head_old = recv_buf_head_;
     recv_buf_head_ += Packet_t::qHeaderLen + msg_sz;
-    // FIX???
-    // extra copy performed
+    // extra copy performed??
     return std::optional<Packet_t>{std::in_place,
                                    recv_buf_.data() + recv_buf_head_old,
                                    Packet_t::qHeaderLen + msg_sz};
@@ -275,7 +283,7 @@ template<typename Packet_t>
     requires PacketFormat<Packet_t>
 TcpConnection<Packet_t> TcpListener<Packet_t>::accept(SocketAddrIn* addr_ptr) {
     if (!(status_flags_ & Status::qStarted)) {
-        throw dash::SocketException("Can't accept, not started");
+        throw dash::IncorrectSocketStatus("Can't accept, not started");
     }
     int new_fd{0};
     if (addr_ptr == nullptr) {
@@ -284,7 +292,7 @@ TcpConnection<Packet_t> TcpListener<Packet_t>::accept(SocketAddrIn* addr_ptr) {
         new_fd = ::accept(fd_, &addr_ptr->addr_, &addr_ptr->size_);
     }
     if (new_fd == -1) {
-        throw dash::SocketException("Can't accept a new connection\n");
+        throw dash::SocketCreationError("Can't accept a new connection\n");
     }
     return {new_fd};
 }

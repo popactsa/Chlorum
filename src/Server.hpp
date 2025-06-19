@@ -12,9 +12,7 @@ public:
     using listener_t = dash::TcpListener<packet_t>;
     static constexpr std::uint32_t qDefaultMaxConn = SOMAXCONN;
     Server() = default;
-    Server(const dash::SocketAddrIn& addr);
     void start(const dash::SocketAddrIn& addr, int max_conn = qDefaultMaxConn);
-    void start(int max_conn = qDefaultMaxConn);
 
 protected:
     listener_t lsock_;

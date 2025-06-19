@@ -9,26 +9,15 @@
 
 #include "Socket.hpp"
 
-Server::Server(const dash::SocketAddrIn& addr) {
-    lsock_.bind(addr);
-}
-
 void Server::start(const dash::SocketAddrIn& addr, int max_conn) {
-    if (!(lsock_.status_flags() & dash::Socket::Status::qBound)) {
-        lsock_.start(addr, max_conn);
-    } else {
-        lsock_.listen(max_conn);
+    lsock_.start(addr, max_conn);
+    try {
+        event_loop();
+    } catch (const dash::SocketException& exc) {
+        // It's actually a poll error, idk what to do with it
+        std::cerr << exc.what() << std::endl;
+        std::terminate();
     }
-    event_loop();
-}
-
-void Server::start(int max_conn) {
-    if (!(lsock_.status_flags() & dash::Socket::Status::qBound)) {
-        throw dash::SocketException("Trying to start without a binding\n");
-    } else {
-        lsock_.listen(max_conn);
-    }
-    event_loop();
 }
 
 std::unique_ptr<Server::conn_t> Server::handle_accept() {
@@ -42,18 +31,27 @@ std::unique_ptr<Server::conn_t> Server::handle_read(
     std::unique_ptr<conn_t>&& conn) {
     try {
         conn->read_all();
-        bool request_succeed = true;
-        while (request_succeed) {
-            auto req = conn->try_request();
-            if (req) {
-                std::ranges::for_each(req->rmsg_range(),
-                                      [](char c) { std::cout << c; });
-                std::cout << std::endl;
-            } else {
-                request_succeed = false;
-            }
+    } catch (...) {
+        // Possible cases:
+        // read_all : 1. can't read from a socket;
+        //            2. EOF
+        // All treatment performed in place
+    }
+    bool request_succeed = true;
+    while (request_succeed) {
+        auto req = conn->try_request();
+        if (req) {
+#ifdef DASH_DEBUG
+            std::cout << req->msg_sz_ << std::endl;
+            std::ranges::for_each(req->rmsg_range(),
+                                  [](char c) { std::cout << c; });
+            std::cout << std::endl;
+#endif  // DASH_DEBUG
+        } else {
+            request_succeed = false;
         }
-    } catch (...) {}
+        // Add app logic, transfering/sharing packet
+    }
     // Implicitly choose move-ctor
     return conn;
 }
@@ -61,7 +59,12 @@ std::unique_ptr<Server::conn_t> Server::handle_write(
     std::unique_ptr<conn_t>&& conn) {
     try {
         conn->write_all();
-    } catch (...) {}
+    } catch (...) {
+        // Possible cases:
+        // write_all : 1. can't read from a socket;
+        //             2. EOF
+        // All treatment performed in place
+    }
     // Implicitly choose move-ctor
     return conn;
 }
@@ -88,8 +91,13 @@ void Server::event_loop() {
             throw dash::SocketException("Poll error");
         }
         if (poll_args[0].revents) {
-            connections.emplace_back(handle_accept());
-            // handle exceptions
+            try {
+                connections.emplace_back(handle_accept());
+            } catch (...) {
+                // There are two possible cases: `lsock_` is not started or
+                // new connection can't be accepted because of connections limit
+                // or anything else No treatment required
+            }
         }
         for (std::uint32_t i{1}, current_conn{0}; i < poll_args.size(); ++i) {
             std::uint32_t ready = poll_args[i].revents;
@@ -125,5 +133,13 @@ void Server::event_loop() {
                 current_conn++;
             }
         }
+#ifdef DASH_DEBUG
+        if (connections.size() != 1) {
+            std::cout << std::format("Currently connections : {}\n",
+                                     connections.size())
+                      << std::endl;
+            ;
+        }
+#endif  // DASH_DEBUG
     }
 }
