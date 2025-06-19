@@ -1,6 +1,7 @@
 #include "Socket.hpp"
 
 #include <asm-generic/socket.h>
+#include <fcntl.h>
 namespace dash {
 Socket::Socket(int domain, int type, int protocol) :
     fd_{::socket(domain, type, protocol)} {
@@ -29,6 +30,20 @@ void Socket::bind(const SocketAddrIn& addr) {
     } else {
         status_flags_ |= Status::qReusable;
     };
+}
+
+void Socket::set_nb() {
+    errno = 0;
+    int flags = ::fcntl(fd_, F_GETFL, 0);
+    if (errno) {
+        throw dash::SocketException("fcntl error when reading flags");
+    }
+    flags |= O_NONBLOCK;
+    errno = 0;
+    ::fcntl(fd_, F_SETFL, flags);
+    if (errno) {
+        throw dash::SocketException("fcntl error when setting flags");
+    }
 }
 
 int Socket::fd() const noexcept {

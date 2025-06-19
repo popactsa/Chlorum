@@ -3,10 +3,10 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <limits>
+#include <ranges>
 #include <string_view>
-
-#include "TcpSocket.hpp"
 
 namespace dash {
 namespace proto {
@@ -18,8 +18,9 @@ concept LinearConstContainer = requires(const T t) {
     { t.size() } -> std::convertible_to<std::uint32_t>;
 };
 struct Packet {
-    static constexpr std::uint32_t qHeaderLen = sizeof(std::uint32_t);
-    static constexpr std::uint32_t qMaxMsgLen = 4096;
+    static constexpr std::uint32_t qHeaderLen = sizeof(std::uint16_t);
+    static constexpr std::uint32_t qMaxMsgLen
+        = std::numeric_limits<std::uint16_t>::max();
     static constexpr std::uint32_t qPacketLen = qHeaderLen + qMaxMsgLen;
     Packet() noexcept;
     template<typename T>
@@ -37,8 +38,18 @@ struct Packet {
     std::array<char, qPacketLen> data_;
     std::uint32_t msg_sz_;
 };
-void receive_packet(TcpConnection& csock, Packet& wbuf);
-void send_packet(TcpConnection& csock, const Packet& rbuf);
+
+///////////////////////// Exceptions /////////////////////////
+class PacketException : public std::exception {
+protected:
+    std::string msg_;
+
+public:
+    explicit PacketException(const std::string& msg) : msg_(msg) {}
+    const char* what() const noexcept override {
+        return msg_.c_str();
+    }
+};
 }  // namespace proto
 }  // namespace dash
 
@@ -69,7 +80,7 @@ constexpr std::uint32_t Packet::msg_sz() const noexcept {
 template<typename T>
 Packet::Packet(const T* msg, std::uint32_t msg_sz) {
     if (msg_sz > qMaxMsgLen) {
-        throw dash::SocketException("Packet ctor message length exceeded\n");
+        throw PacketException("Packet ctor message length exceeded\n");
     }
     msg_sz_ = msg_sz;
     std::memcpy(data_.data(), &msg_sz, qHeaderLen);
