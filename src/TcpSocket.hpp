@@ -1,11 +1,14 @@
 #ifndef TCP_SOCKET_HPP
 #define TCP_SOCKET_HPP
 
+#include <cerrno>
+#include <utility>
 extern "C" {
 #include <netinet/in.h>
 #include <sys/socket.h>
 }
 #include <cstdint>
+#include <iostream>
 
 #include "Protocol.hpp"
 #include "Socket.hpp"
@@ -35,7 +38,14 @@ template<typename Packet_t>
 class TcpConnection : public TcpSocket {
 public:
     enum class Desire : char { qClose = 1, qRead = 1 << 1, qWrite = 1 << 2 };
-    TcpConnection() = default;
+    static constexpr std::uint32_t qBufMaxSize = 64 * Packet_t::qPacketLen;
+    static constexpr std::uint32_t qTailTriggerDist
+        = qBufMaxSize - Packet_t::qPacketLen;
+    static constexpr std::uint32_t qBufInitSize = qBufMaxSize / 8;
+    static_assert(qBufMaxSize >= qBufInitSize);
+    static_assert(qTailTriggerDist <= qBufMaxSize - Packet_t::qPacketLen);
+
+    TcpConnection();
     void connect(const SocketAddrIn& addr);
     void write_all();
     void read_all();
@@ -48,7 +58,7 @@ public:
 protected:
     friend Packet_t;
     friend TcpListener<Packet_t>;
-    TcpConnection(int fd) noexcept;
+    TcpConnection(int fd);
 
 private:
     // [] Sending through a socket requires a storage to be linear
@@ -64,12 +74,10 @@ private:
     std::vector<char> send_buf_;
     std::uint32_t recv_buf_head_ = 0;
     std::uint32_t send_buf_head_ = 0;
-    std::uint32_t lazy_erasure(std::vector<char>& buf,
-                               std::uint32_t head) noexcept;
-    static constexpr std::uint32_t head_trigger_dist
-        = 64 * Packet_t::qPacketLen;
-    static constexpr std::uint32_t buf_max_size_
-        = head_trigger_dist + Packet_t::qPacketLen;
+    std::uint32_t recv_buf_tail_ = 0;
+    std::uint32_t send_buf_tail_ = 0;
+    void lazy_erasure(std::vector<char>& buf, std::uint32_t& head,
+                      std::uint32_t& tail) noexcept;
 };
 
 template<typename Packet_t>
@@ -91,16 +99,26 @@ namespace dash {
 
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
-TcpConnection<Packet_t>::TcpConnection(int fd) noexcept : TcpSocket(fd) {
-    set_nb();
-    status_flags_ |= Status::qOpen;
+TcpConnection<Packet_t>::TcpConnection() : TcpSocket() {
+    recv_buf_.resize(qBufInitSize);
+    send_buf_.resize(qBufInitSize);
+}
+
+template<typename Packet_t>
+    requires PacketFormat<Packet_t>
+TcpConnection<Packet_t>::TcpConnection(int fd) : TcpSocket(fd) {
+    recv_buf_.resize(qBufInitSize);
+    send_buf_.resize(qBufInitSize);
 }
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
 void TcpConnection<Packet_t>::connect(const SocketAddrIn& addr) {
     auto [c_addr, size] = addr.data();
+    errno = 0;
     if (::connect(fd_, &c_addr, size) == -1) {
-        throw dash::SocketException("Can't establish connection\n");
+        if (errno != EINPROGRESS) {
+            throw dash::SocketException("Can't establish connection\n");
+        }
     } else {
         status_flags_ |= Status::qConnected;
     }
@@ -112,10 +130,10 @@ void TcpConnection<Packet_t>::write_all() {
     enum class ExcCase { qNone, qNotReady, qCantWrite, qEOF };
     ExcCase exc_case = ExcCase::qNone;
     std::uint32_t sz = send_buf_.size() - send_buf_head_;
-    char* rbuf = send_buf_.data() + send_buf_head_;
+    char* buf = send_buf_.data() + send_buf_head_;
     errno = 0;
     while (sz > 0) {
-        ssize_t rv = ::write(*this, rbuf, sz);
+        ssize_t rv = ::write(*this, buf, sz);
         if (rv < 0 && errno == EAGAIN) {
             exc_case = ExcCase::qNotReady;
             break;
@@ -127,13 +145,13 @@ void TcpConnection<Packet_t>::write_all() {
             break;
         }
         sz -= rv;
-        rbuf += rv;
+        buf += rv;
         send_buf_head_ += rv;
 #ifdef DASH_DEBUG
         std::cout << std::format("WRITE : {} of {}\n", rv, sz);
 #endif  // DASH_DEBUG
     }
-    send_buf_head_ -= lazy_erasure(send_buf_, send_buf_head_);
+    lazy_erasure(send_buf_, send_buf_head_, send_buf_tail_);
     if (send_buf_head_ == 0) {
         desire_ *= Desire::qWrite;
         desire_ |= Desire::qRead;
@@ -163,40 +181,34 @@ void TcpConnection<Packet_t>::read_all() {
     enum class ExcCase { qNone, qNotReady, qCantRead, qEOF };
     ExcCase exc_case = ExcCase::qNone;
     errno = 0;
-    std::array<char, buf_max_size_ / 4> wbuf_arr;
-    std::uint32_t sz = wbuf_arr.size();
-    char* wbuf = wbuf_arr.data();
-    while (sz > 0) {
-        ssize_t rv = ::read(*this, wbuf, sz);
+    if (recv_buf_.size() - recv_buf_head_ < Packet_t::qPacketLen) {
+        recv_buf_.resize(recv_buf_.size() * 2);
+    }
+    std::uint32_t sz = recv_buf_.size() - recv_buf_head_;
+    char* buf = recv_buf_.data() + recv_buf_head_;
+    bool first_try = true;
+    for (ssize_t rv = 1; sz > 0 && rv != 0;) {
+        rv = ::read(*this, buf, sz);
         if (rv < 0 && errno == EAGAIN) {
             exc_case = ExcCase::qNotReady;
             break;
         } else if (rv < 0) {
             exc_case = ExcCase::qCantRead;
             break;
-        } else if (rv == 0) {
+        } else if (rv == 0 && first_try) {
+            // unexpected eof if it is not a first attempt to read
             exc_case = ExcCase::qEOF;
             break;
         }
+        first_try = false;
 #ifdef DASH_DEBUG
         std::cout << std::format("READ : {} of capable {}\n", rv, sz);
 #endif  // DASH_DEBUG
         sz -= rv;
-        wbuf += rv;
+        buf += rv;
         recv_buf_head_ += rv;
     }
-    std::ranges::copy_n(
-        wbuf_arr.cbegin(), wbuf_arr.size() - sz, std::back_inserter(recv_buf_));
-#ifdef DASH_DEBUG
-    auto recv_buf_old_size = recv_buf_.size();
-#endif  // DASH_DEBUG
-    recv_buf_head_ -= lazy_erasure(recv_buf_, recv_buf_head_);
-#ifdef DASH_DEBUG
-    std::cout << std::format("Before erasure : {}\nAfter erasure : {}\n",
-                             recv_buf_old_size,
-                             recv_buf_.size())
-              << std::endl;
-#endif  // DASH_DEBUG
+    lazy_erasure(recv_buf_, recv_buf_head_, recv_buf_tail_);
     if (recv_buf_head_ == 0) {
         desire_ |= Desire::qWrite;
         desire_ *= Desire::qRead;
@@ -221,16 +233,18 @@ void TcpConnection<Packet_t>::read_all() {
 
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
-std::uint32_t TcpConnection<Packet_t>::lazy_erasure(
-    std::vector<char>& buf, std::uint32_t head) noexcept {
+void TcpConnection<Packet_t>::lazy_erasure(std::vector<char>& buf,
+                                           std::uint32_t& head,
+                                           std::uint32_t& tail) noexcept {
     if (head == buf.size() && head >= Packet_t::qPacketLen) {
         buf.clear();
-        return head;
-    } else if (head > head_trigger_dist) {
-        buf.erase(buf.begin(), buf.begin() + head);
-        return head;
+        head = 0;
+        tail = 0;
+    } else if (tail > qTailTriggerDist) {
+        buf.erase(buf.begin(), buf.begin() + tail);
+        head -= tail;
+        tail = 0;
     }
-    return 0;
 }
 
 // I chose to use 'std::optional + noexcept' instead of
@@ -240,7 +254,7 @@ std::uint32_t TcpConnection<Packet_t>::lazy_erasure(
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
 std::optional<Packet_t> TcpConnection<Packet_t>::try_request() noexcept {
-    if (recv_buf_.size() < Packet_t::qHeaderLen) {
+    if (recv_buf_head_ - recv_buf_head_ < Packet_t::qHeaderLen) {
         // Packet is incomplete
         return {};
     }
@@ -248,16 +262,16 @@ std::optional<Packet_t> TcpConnection<Packet_t>::try_request() noexcept {
     std::memcpy(
         &msg_sz, recv_buf_.data() + recv_buf_head_, Packet_t::qHeaderLen);
     msg_sz = ::ntohl(msg_sz);
-    if (recv_buf_.size() < recv_buf_head_ + Packet_t::qHeaderLen + msg_sz) {
+    if (recv_buf_head_ - recv_buf_tail_ < Packet_t::qHeaderLen + msg_sz) {
         // Packet is incomplete
         return {};
     }
-    auto recv_buf_head_old = recv_buf_head_;
-    recv_buf_head_ += Packet_t::qHeaderLen + msg_sz;
-    // extra copy performed??
-    return std::optional<Packet_t>{std::in_place,
-                                   recv_buf_.data() + recv_buf_head_old,
-                                   Packet_t::qHeaderLen + msg_sz};
+    std::optional<Packet_t> result(std::in_place,
+                                   recv_buf_.data() + recv_buf_head_,
+                                   Packet_t::qHeaderLen + msg_sz);
+    recv_buf_tail_ += Packet_t::qHeaderLen + msg_sz;
+    lazy_erasure(recv_buf_, recv_buf_head_, recv_buf_tail_);
+    return result;
 }
 
 ////////////////////////// TcpListener ////////////////////////////

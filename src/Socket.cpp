@@ -10,6 +10,11 @@ Socket::Socket(int domain, int type, int protocol) :
     } else {
         status_flags_ |= Status::qOpen;
     }
+    set_nb();
+}
+
+Socket::Socket(int fd) noexcept : fd_{fd} {
+    set_nb();
 }
 
 void Socket::bind(const SocketAddrIn& addr) {
@@ -33,6 +38,10 @@ void Socket::bind(const SocketAddrIn& addr) {
 }
 
 void Socket::set_nb() {
+    if (fd_ == -1) {
+        // It is considered as default action on construction, so no throw
+        return;
+    }
     errno = 0;
     int flags = ::fcntl(fd_, F_GETFL, 0);
     if (errno) {

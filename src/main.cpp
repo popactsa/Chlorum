@@ -18,11 +18,10 @@ void host_server() {
     server.start(addr);
 }
 
-void run_client_auto(int arg) {
+void run_client_auto([[maybe_unused]] int arg) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     Client<dash::proto::Packet> client(addr);
-    for (int i{0}; i < 3; ++i) {
-        // Actually, there is a bug, if you try to set i = 10 initially
+    for (int i{10}; i < 13; ++i) {
         std::string msg = std::format("that's what she said : {} - {}", i, arg);
         dash::proto::Packet packet(msg);
         client.send_packet(packet);
@@ -32,7 +31,7 @@ void run_client_auto(int arg) {
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8086);
+    addr.sin_port = htons(8080);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     std::jthread server_thread(host_server);
     std::vector<std::jthread> threads;

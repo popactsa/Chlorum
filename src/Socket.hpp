@@ -57,7 +57,7 @@ public:
     ~Socket() noexcept;
 
 protected:
-    Socket(int fd) noexcept : fd_{fd} {}
+    Socket(int fd) noexcept;
     int fd_;
     dash::Flag<Status> status_flags_;
 };

@@ -86,7 +86,11 @@ void Server::event_loop() {
         }
         errno = 0;
         int rv = ::poll(
-            poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), -1);
+            poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), 5000);
+        if (rv == 0) {
+            // Timeout: this listening socket is dead? idk
+            throw dash::SocketException("Dead listening socket timeout(?)");
+        }
         if (rv < 0 && errno != EINTR) {
             throw dash::SocketException("Poll error");
         }
