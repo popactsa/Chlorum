@@ -29,12 +29,13 @@ struct Packet {
     template<typename T>
     Packet(const T* msg, std::uint32_t sz);
     Packet(std::string_view msg);
-    constexpr const char* rbuf() const noexcept;
-    constexpr char* wbuf() noexcept;
+    constexpr const char* rdata() const noexcept;
+    constexpr char* wdata() noexcept;
     constexpr const char* rmsg() const noexcept;
     constexpr char* wmsg() noexcept;
     constexpr std::uint32_t msg_sz() const noexcept;
     constexpr auto rmsg_range() const noexcept;
+    constexpr std::uint32_t size() const noexcept;
     std::array<char, qPacketLen> data_;
     std::uint32_t msg_sz_;
 };
@@ -57,11 +58,11 @@ public:
 
 namespace dash {
 namespace proto {
-constexpr const char* Packet::rbuf() const noexcept {
+constexpr const char* Packet::rdata() const noexcept {
     return data_.data();
 }
 
-constexpr char* Packet::wbuf() noexcept {
+constexpr char* Packet::wdata() noexcept {
     return data_.data();
 }
 
@@ -75,6 +76,10 @@ constexpr char* Packet::wmsg() noexcept {
 
 constexpr std::uint32_t Packet::msg_sz() const noexcept {
     return msg_sz_;
+}
+
+constexpr std::uint32_t Packet::size() const noexcept {
+    return msg_sz_ + qHeaderLen;
 }
 
 template<typename T>
