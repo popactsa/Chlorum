@@ -3,8 +3,6 @@
 
 #include <poll.h>
 
-#include <thread>
-
 #include "Protocol.hpp"
 #include "Socket.hpp"
 #include "TcpSocket.hpp"
@@ -45,14 +43,12 @@ void Client<Packet_t>::do_something(int arg) noexcept {
     int max_msg = 3;
     while (i < max_msg) {
         pollfd pfd{csock_.fd(), 0, 0};
-
-        // Set desired events
         if (sent <= i) {
             pfd.events |= POLLOUT;
         }
         pfd.events |= POLLIN;
 
-        int ready = poll(&pfd, 1, -1);
+        int ready = poll(&pfd, 1, 500);
         if (ready < 0) {
             std::cerr << "Poll error" << std::endl;
             break;
@@ -62,7 +58,6 @@ void Client<Packet_t>::do_something(int arg) noexcept {
             continue;
         }
 
-        // Handle write
         if ((pfd.revents & POLLOUT) && i >= sent) {
             std::string msg = std::format("Client message {}: {}", sent, arg);
             dash::proto::Packet packet(msg);
@@ -73,7 +68,6 @@ void Client<Packet_t>::do_something(int arg) noexcept {
                 std::string(std::format("CLIENT SENT: {}\n", msg)));
         }
 
-        // Handle read
         if (pfd.revents & POLLIN) {
             csock_.read_all();
             auto read = csock_.read_packet();
@@ -88,17 +82,15 @@ void Client<Packet_t>::do_something(int arg) noexcept {
             }
         }
 
-        // Handle errors
         if (pfd.revents & POLLERR) {
             dash::rc_free_print(std::string(std::format("Connection error\n")));
             break;
         }
     }
 
-    // Clean shutdown
     csock_.close();
-    dash::rc_free_print(std::string(
-        std::format("Client finished after receiving {} messages\n", i)));
+    dash::rc_free_print(std::string(std::format(
+        "Client {} finished after receiving {} messages\n", arg, i)));
 }
 
 #endif  // CLIENT_HPP

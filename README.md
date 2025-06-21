@@ -6,10 +6,18 @@ safe wraps of C POSIX functions with exception handling in mind.
 
 Event-loop server with non-blocking receive/send buffering used
 
-## main.cpp demo
+## Building
+- mkdir build
+- cd build && cmake ..
+- cd src && ./chlorum_run
+
+You can create a debug-build: cmake .. --config Build
+
+## Demo
 A single server and multiple clients executed in separate threads
 are talking to each other: when server receives a interpreted
-message it sends it's copy back to the sender.
+message it sends echo back to the sender.
+Then all client threads are joined and after 5 seconds created again.
 
 ## Class relationship overview:
 <pre>
@@ -32,3 +40,6 @@ Transferred packet is structured as follows: first few bytes(default : `qHeaderL
 contain `msg_sz_`. They are followed with `msg_sz_` bytes containing
 raw data.
 Packet is stored as a std::vector<char> with `qHeaderLen` + `msg_sz_` elements
+
+## Tests
+Not provided yet.

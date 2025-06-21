@@ -5,9 +5,9 @@
 #include <sys/types.h>
 
 #include <algorithm>
-#include <ranges>
 
 #include "Socket.hpp"
+#include "auxiliary_functions.hpp"
 
 void Server::start(const dash::SocketAddrIn& addr, int max_conn) {
     lsock_.start(addr, max_conn);
@@ -33,6 +33,8 @@ std::unique_ptr<Server::conn_t> Server::handle_read(
     for (bool request_succeed = true; request_succeed;) {
         auto req = conn->read_packet();
         if (req) {
+            // Generating an echo
+            conn->write_packet(*req);
 #ifdef DASH_DEBUG
             std::string msg;
             for (char c : req->rmsg_range()) {
@@ -40,8 +42,6 @@ std::unique_ptr<Server::conn_t> Server::handle_read(
             }
             msg = std::format("SERVER RECV: {}\n", msg);
             dash::rc_free_print(msg);
-            // Generating an echo
-            conn->write_packet(*req);
 #endif  // DASH_DEBUG
         } else {
             request_succeed = false;
@@ -131,9 +131,9 @@ void Server::event_loop() {
         }
 #ifdef DASH_DEBUG
         if (connections.size() != connections_size_old) {
-            std::cout << std::format("======Currently connections : {}======",
-                                     connections.size())
-                      << std::endl;
+            dash::rc_free_print(std::string(
+                std::format("======Currently connections : {}======\n",
+                            connections.size())));
             connections_size_old = connections.size();
         }
 #endif  // DASH_DEBUG

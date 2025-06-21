@@ -1,7 +1,5 @@
 #include "Protocol.hpp"
 
-#include "error_handling.hpp"
-
 namespace dash {
 namespace proto {
 

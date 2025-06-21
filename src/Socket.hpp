@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "auxiliary_functions.hpp"
-#include "error_handling.hpp"
 
 namespace dash {
 

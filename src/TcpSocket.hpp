@@ -10,7 +10,6 @@ extern "C" {
 #include <sys/socket.h>
 }
 #include <cstdint>
-#include <iostream>
 
 #include "Protocol.hpp"
 #include "Socket.hpp"
