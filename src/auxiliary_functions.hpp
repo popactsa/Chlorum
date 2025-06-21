@@ -2,15 +2,23 @@
 #define AUXILIARY_FUNCTIONS_H
 
 #include <algorithm>
-#include <array>
 #include <bitset>
 #include <chrono>
 #include <climits>
 #include <iostream>
-#include <utility>
-#include <variant>
+#include <mutex>
 
 namespace dash {
+
+struct RcFreePrint {
+    mutable std::mutex mtx;
+    void operator()(std::string_view msg) const {
+        const std::lock_guard<std::mutex> lock(mtx);
+        std::cout << msg << std::flush;
+    }
+};
+
+constexpr RcFreePrint rc_free_print;
 
 template<typename F>
 struct FinalAction {
@@ -113,6 +121,9 @@ public:
     }
     [[nodiscard]] operator bool() const noexcept {
         return any();
+    }
+    operator std::bitset<sizeof(E) * CHAR_BIT>() const noexcept {
+        return bits_;
     }
 
 private:

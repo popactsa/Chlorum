@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "auxiliary_functions.hpp"
-#include "error_handling.hpp"
 
 namespace dash {
 
@@ -50,45 +49,19 @@ public:
     int fd() const noexcept;
     operator int() const noexcept;
     bool close() noexcept;
+    void set_nb();
     inline dash::Flag<Status> status_flags() const noexcept {
         return status_flags_;
     }
     ~Socket() noexcept;
 
 protected:
-    Socket(int fd) noexcept : fd_{fd} {}
+    Socket(int fd) noexcept;
     int fd_;
     dash::Flag<Status> status_flags_;
-
-    ///////////////////////// Exceptions /////////////////////////
-    // A common class for exceptions thrown when checking parameters validity
-    class SocketException : public std::exception {
-    protected:
-        std::string msg_;
-
-    public:
-        explicit SocketException(const std::string& msg) : msg_(msg) {}
-        const char* what() const noexcept override {
-            return msg_.c_str();
-        }
-    };
-    class SocketCreationError : public SocketException {
-    public:
-        explicit SocketCreationError(const std::string& msg) :
-            SocketException(msg) {}
-        explicit SocketCreationError() :
-            SocketCreationError("Can't create a socket") {}
-    };
-
-    class ConnectionEOF : public SocketException {
-    public:
-        explicit ConnectionEOF(const std::string& msg) : SocketException(msg) {}
-        explicit ConnectionEOF() : ConnectionEOF("EOF/Connection closed") {}
-    };
-
-    ///////////////////////// Exceptions /////////////////////////
-    // A common class for exceptions thrown when checking parameters validity
 };
+///////////////////////// Exceptions /////////////////////////
+// A common class for exceptions thrown when checking parameters validity
 
 class SocketException : public std::exception {
 protected:
@@ -100,6 +73,13 @@ public:
         return msg_.c_str();
     }
 };
+
+class IncorrectSocketStatus : public SocketException {
+public:
+    explicit IncorrectSocketStatus(const std::string& msg) :
+        SocketException(msg) {}
+};
+
 class SocketCreationError : public SocketException {
 public:
     explicit SocketCreationError(const std::string& msg) :
