@@ -28,14 +28,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     for (int i{0}; i < 4; ++i) {
         threads.emplace_back(run_client_auto, i);
     }
-    for (int i{0}; i < 4; ++i) {
-        threads[i].join();
-    }
+    threads.clear();
     using namespace std::chrono_literals;
     std::cout << "Sleeping.....5 sec" << std::endl;
     std::this_thread::sleep_for(5000ms);
     for (int i{0}; i < 4; ++i) {
         threads.emplace_back(run_client_auto, i);
     }
+    for (int i{0}; i < 4; ++i) {
+        threads[i].join();
+    }
+    std::cout << "Done!" << std::endl;
     return 0;
 }

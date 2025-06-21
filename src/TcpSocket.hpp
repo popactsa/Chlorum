@@ -40,8 +40,8 @@ class TcpConnection : public TcpSocket {
 public:
     enum class Desire : char { qClose = 1, qRead = 1 << 1, qWrite = 1 << 2 };
     static constexpr std::uint32_t qBufMaxSize = 64 * Packet_t::qPacketLen;
-    static constexpr std::uint32_t qHeadTriggerDist = 30;
-    // = qBufMaxSize - Packet_t::qPacketLen;
+    static constexpr std::uint32_t qHeadTriggerDist
+        = qBufMaxSize - Packet_t::qPacketLen;
     static constexpr std::uint32_t qBufInitSize = qBufMaxSize / 8;
     static constexpr std::uint32_t qMaxFailedReadAttempts = 1000;
     static_assert(qBufMaxSize >= qBufInitSize);
