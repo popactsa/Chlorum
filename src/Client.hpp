@@ -1,11 +1,14 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
+#include <poll.h>
+
 #include <thread>
 
 #include "Protocol.hpp"
 #include "Socket.hpp"
 #include "TcpSocket.hpp"
+#include "auxiliary_functions.hpp"
 
 template<typename Packet_t>
     requires dash::PacketFormat<Packet_t>
@@ -14,7 +17,7 @@ public:
     Client() = default;
     Client(const dash::SocketAddrIn& addr);
     void connect(const dash::SocketAddrIn& addr);
-    void do_something() noexcept;
+    void do_something(int arg) noexcept;
 
 private:
     dash::TcpConnection<Packet_t> csock_;
@@ -36,22 +39,66 @@ void Client<Packet_t>::connect(const dash::SocketAddrIn& addr) {
 
 template<typename Packet_t>
     requires dash::PacketFormat<Packet_t>
-void Client<Packet_t>::do_something() noexcept {
-    for (int i{0}; i < 3; ++i) {
-        std::string msg = std::format("that's what she said : {}", i);
-        dash::proto::Packet packet(msg);
-        csock_.write_packet(packet);
-        csock_.write_all();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        csock_.read_all();
-        auto read = csock_.read_packet();
-        if (read) {
-            std::cout << "CLIENT RECV : ";
-            std::ranges::for_each(read->rmsg_range(),
-                                  [](char c) { std::cout << c; });
-            std::cout << std::endl;
+void Client<Packet_t>::do_something(int arg) noexcept {
+    int i = 0;
+    int sent = 0;
+    int max_msg = 3;
+    while (i < max_msg) {
+        pollfd pfd{csock_.fd(), 0, 0};
+
+        // Set desired events
+        if (sent <= i) {
+            pfd.events |= POLLOUT;
+        }
+        pfd.events |= POLLIN;
+
+        int ready = poll(&pfd, 1, -1);
+        if (ready < 0) {
+            std::cerr << "Poll error" << std::endl;
+            break;
+        }
+        if (ready == 0) {
+            std::cerr << "Timeout" << std::endl;
+            continue;
+        }
+
+        // Handle write
+        if ((pfd.revents & POLLOUT) && i >= sent) {
+            std::string msg = std::format("Client message {}: {}", sent, arg);
+            dash::proto::Packet packet(msg);
+            csock_.write_packet(packet);
+            csock_.write_all();
+            sent++;
+            dash::rc_free_print(
+                std::string(std::format("CLIENT SENT: {}\n", msg)));
+        }
+
+        // Handle read
+        if (pfd.revents & POLLIN) {
+            csock_.read_all();
+            auto read = csock_.read_packet();
+            if (read) {
+                std::string msg;
+                for (char c : read->rmsg_range()) {
+                    msg += c;
+                }
+                msg = std::format("CLIENT RECV: {}\n", msg);
+                dash::rc_free_print(msg);
+                i++;
+            }
+        }
+
+        // Handle errors
+        if (pfd.revents & POLLERR) {
+            dash::rc_free_print(std::string(std::format("Connection error\n")));
+            break;
         }
     }
+
+    // Clean shutdown
+    csock_.close();
+    dash::rc_free_print(std::string(
+        std::format("Client finished after receiving {} messages\n", i)));
 }
 
 #endif  // CLIENT_HPP

@@ -3,6 +3,8 @@
 
 #include <cerrno>
 #include <utility>
+
+#include "auxiliary_functions.hpp"
 extern "C" {
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -56,6 +58,12 @@ public:
     Flag<Desire> desire_;
     void write_packet(const Packet_t& packet);
     std::optional<Packet_t> read_packet() noexcept;
+    constexpr std::uint32_t recv_diff() const noexcept {
+        return recv_buf_tail_ - recv_buf_head_;
+    }
+    constexpr std::uint32_t send_diff() const noexcept {
+        return send_buf_tail_ - send_buf_head_;
+    }
 
 protected:
     friend Packet_t;
@@ -142,7 +150,6 @@ void TcpConnection<Packet_t>::write_packet(const Packet_t& packet) {
     std::memcpy(
         send_buf_.data() + send_buf_tail_, packet.rdata(), packet.size());
     send_buf_tail_ += packet.size();
-    desire_ |= Desire::qWrite;
 }
 
 // I chose to use 'std::optional + noexcept' instead of
@@ -159,28 +166,16 @@ std::optional<Packet_t> TcpConnection<Packet_t>::read_packet() noexcept {
         failed_attempts_to_read = 0;
         return {};
     }
-    if (std::uint32_t diff = recv_buf_tail_ - recv_buf_head_;
-        diff != 0 && diff < Packet_t::qHeaderLen) {
-        // Packet is incomplete
+    try {
+        std::optional<Packet_t> result(
+            std::in_place, recv_buf_, recv_buf_head_, recv_buf_tail_);
+        failed_attempts_to_read = 0;
+        lazy_erasure(recv_buf_);
+        return result;
+    } catch (const dash::proto::PacketException& exc) {
         failed_attempts_to_read++;
         return {};
     }
-    std::uint32_t msg_sz;
-    std::memcpy(
-        &msg_sz, recv_buf_.data() + recv_buf_head_, Packet_t::qHeaderLen);
-    if (recv_buf_tail_ - recv_buf_head_ < Packet_t::qHeaderLen + msg_sz) {
-        // Packet is incomplete
-        failed_attempts_to_read++;
-        return {};
-    }
-    std::optional<Packet_t> result(std::in_place,
-                                   recv_buf_.data() + recv_buf_head_,
-                                   Packet_t::qHeaderLen + msg_sz);
-    failed_attempts_to_read = 0;
-    recv_buf_head_ += Packet_t::qHeaderLen + msg_sz;
-    lazy_erasure(recv_buf_);
-    desire_ |= Desire::qRead;
-    return result;
 }
 
 template<typename Packet_t>
@@ -188,9 +183,14 @@ template<typename Packet_t>
 void TcpConnection<Packet_t>::write_all() {
     enum class ExcCase { qNone, qNotReady, qCantWrite, qEOF };
     ExcCase exc_case = ExcCase::qNone;
-    std::uint32_t sz = send_buf_tail_ - send_buf_head_;
+    std::uint32_t sz = send_diff();
     char* buf = send_buf_.data() + send_buf_head_;
     errno = 0;
+    if (sz == 0) {
+        desire_ *= Desire::qWrite;
+        desire_ |= Desire::qRead;
+        return;
+    }
     while (sz > 0) {
         ssize_t rv = ::write(*this, buf, sz);
         if (rv < 0 && errno == EAGAIN) {
@@ -204,7 +204,8 @@ void TcpConnection<Packet_t>::write_all() {
             break;
         }
 #ifdef DASH_DEBUG
-        std::cout << std::format("WRITE : {} of {}\n", rv, sz);
+        dash::rc_free_print(
+            std::string(std::format("WRITE : {} of {}\n", rv, sz)));
 #endif  // DASH_DEBUG
         sz -= rv;
         buf += rv;
@@ -218,14 +219,9 @@ void TcpConnection<Packet_t>::write_all() {
         break;
     case ExcCase::qCantWrite: {
         desire_ |= Desire::qClose;
-        throw dash::SocketException("Can't write to socket\n");
     } break;
     case ExcCase::qEOF: {
         desire_ |= Desire::qClose;
-        if (recv_buf_.size() != 0) {
-            throw dash::ConnectionEOF(
-                "Can't write to socket: EOF/Closed, some data wasn't sent\n");
-        }  // else client closed correctly
     } break;
     }
 }
@@ -241,7 +237,6 @@ void TcpConnection<Packet_t>::read_all() {
     }
     std::uint32_t sz = recv_buf_.size() - recv_buf_tail_;
     char* buf = recv_buf_.data() + recv_buf_tail_;
-    bool first_try = true;
     for (ssize_t rv = 1; sz > 0 && rv != 0;) {
         rv = ::read(*this, buf, sz);
         if (rv < 0 && errno == EAGAIN) {
@@ -250,14 +245,14 @@ void TcpConnection<Packet_t>::read_all() {
         } else if (rv < 0) {
             exc_case = ExcCase::qCantRead;
             break;
-        } else if (rv == 0 && first_try) {
-            // unexpected eof if it is not a first attempt to read
+        } else if (rv == 0) {
+            // unexpected eof if it is a first attempt to read
             exc_case = ExcCase::qEOF;
             break;
         }
-        first_try = false;
 #ifdef DASH_DEBUG
-        std::cout << std::format("READ : {} of capable {}\n", rv, sz);
+        dash::rc_free_print(
+            std::string(std::format("READ : {} of capable {}\n", rv, sz)));
 #endif  // DASH_DEBUG
         sz -= rv;
         buf += rv;
@@ -270,13 +265,9 @@ void TcpConnection<Packet_t>::read_all() {
         break;
     case ExcCase::qCantRead: {
         desire_ |= Desire::qClose;
-        throw dash::SocketException("Can't read from socket");
     } break;
     case ExcCase::qEOF: {
         desire_ |= Desire::qClose;
-        if (recv_buf_.size() != 0) {
-            throw dash::ConnectionEOF("Can't read from socket: EOF/Closed");
-        }  // else client closed correctly
     } break;
     }
 }
@@ -284,24 +275,16 @@ void TcpConnection<Packet_t>::read_all() {
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
 void TcpConnection<Packet_t>::lazy_erasure(std::vector<char>& buf) noexcept {
-    std::uint32_t head;
-    std::uint32_t tail;
-    if (&buf == &recv_buf_) {
-        head = recv_buf_head_;
-        tail = recv_buf_tail_;
-    } else if (&buf == &send_buf_) {
-        head = send_buf_head_;
-        tail = send_buf_tail_;
-    } else {
-        return;
-    }
-    if (tail == head && head >= Packet_t::qPacketLen) {
-        buf.clear();
+    // Pretty not extensible
+    std::uint32_t& head = &buf == &recv_buf_ ? recv_buf_head_ : send_buf_head_;
+    std::uint32_t& tail = &buf == &recv_buf_ ? recv_buf_tail_ : send_buf_tail_;
+    assert(tail >= head);
+    if (tail == head) {
         head = 0;
         tail = 0;
     } else if (head > qHeadTriggerDist) {
         buf.erase(buf.begin(), buf.begin() + head);
-        head -= head;
+        tail -= head;
         head = 0;
     }
 }

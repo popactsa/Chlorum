@@ -29,46 +29,37 @@ std::unique_ptr<Server::conn_t> Server::handle_accept() {
 
 std::unique_ptr<Server::conn_t> Server::handle_read(
     std::unique_ptr<conn_t>&& conn) {
-    try {
-        conn->read_all();
-    } catch (...) {
-        // Possible cases:
-        // read_all : 1. can't read from a socket;
-        //            2. EOF
-        // All treatment performed in place
-    }
-    bool request_succeed = true;
-    while (request_succeed) {
+    conn->read_all();
+    for (bool request_succeed = true; request_succeed;) {
         auto req = conn->read_packet();
         if (req) {
 #ifdef DASH_DEBUG
-            std::cout << "CLIENT RECV : ";
-            std::ranges::for_each(req->rmsg_range(),
-                                  [](char c) { std::cout << c; });
-            std::cout << std::endl;
-            // Creating a response
+            std::string msg;
+            for (char c : req->rmsg_range()) {
+                msg += c;
+            }
+            msg = std::format("SERVER RECV: {}\n", msg);
+            dash::rc_free_print(msg);
+            // Generating an echo
             conn->write_packet(*req);
-            conn->desire_ |= conn_t::Desire::qWrite;
-            conn->desire_ *= conn_t::Desire::qRead;
-            // Add app logic, transfering/sharing packet
 #endif  // DASH_DEBUG
         } else {
             request_succeed = false;
         }
     }
+    if (conn->send_diff() != 0) {
+        conn->desire_ |= conn_t::Desire::qWrite;
+        conn->desire_ *= conn_t::Desire::qRead;
+    }
     return conn;
 }
+
 std::unique_ptr<Server::conn_t> Server::handle_write(
     std::unique_ptr<conn_t>&& conn) {
-    try {
-        conn->write_all();
+    conn->write_all();
+    if (conn->send_diff() == 0) {
         conn->desire_ *= conn_t::Desire::qWrite;
         conn->desire_ |= conn_t::Desire::qRead;
-    } catch (...) {
-        // Possible cases:
-        // write_all : 1. can't read from a socket;
-        //             2. EOF
-        // All treatment performed in place
     }
     return conn;
 }
@@ -76,6 +67,11 @@ std::unique_ptr<Server::conn_t> Server::handle_write(
 void Server::event_loop() {
     std::vector<std::unique_ptr<conn_t>> connections;
     std::vector<::pollfd> poll_args;
+    auto close_connection = [&connections](std::uint32_t i) {
+        connections[i]->close();
+        std::swap(connections[i], connections.back());
+        connections.pop_back();
+    };
 #ifdef DASH_DEBUG
     std::uint32_t connections_size_old = 0;
 #endif  // DASH_DEBUG
@@ -93,10 +89,7 @@ void Server::event_loop() {
         }
         errno = 0;
         int rv = ::poll(
-            poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), 5000);
-        if (rv == 0) {
-            throw dash::SocketException("Dead listening socket timeout(?)");
-        }
+            poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), 500);
         if (rv < 0 && errno != EINTR) {
             throw dash::SocketException("Poll error");
         }
@@ -104,7 +97,7 @@ void Server::event_loop() {
             try {
                 connections.emplace_back(handle_accept());
             } catch (...) {
-                // There are two possible cases: `lsock_` is not started or
+                // There are two possible cases: `lsock_` is not started or a
                 // new connection can't be accepted because of connections limit
                 // or anything else. No treatment required
             }
@@ -114,36 +107,31 @@ void Server::event_loop() {
             if (ready == 0) {
                 continue;
             }
-            if (ready & POLLIN) {
-                assert(connections[current_conn]->desire()
-                       & conn_t::Desire::qRead);
+            if (ready & POLLERR) {
+                close_connection(current_conn);
+                continue;
+            }
+            if (ready & POLLIN
+                && connections[current_conn]->desire()
+                       & conn_t::Desire::qRead) {
                 connections[current_conn]
                     = handle_read(std::move(connections[current_conn]));
             }
-            if (ready & POLLOUT) {
-                assert(connections[current_conn]->desire()
-                       & conn_t::Desire::qWrite);
+            if (ready & POLLOUT
+                && connections[current_conn]->desire()
+                       & conn_t::Desire::qWrite) {
                 connections[current_conn]
                     = handle_write(std::move(connections[current_conn]));
             }
-            if (ready & POLLERR
-                || connections[current_conn]->desire()
-                       & conn_t::Desire::qClose) {
-                connections[current_conn]->close();
-                auto found = std::ranges::find_if(
-                    connections | std::views::reverse,
-                    [](const auto& ptr) { return ptr == nullptr; });
-                if (found != connections.rend()) {
-                    std::swap(connections[current_conn], *found);
-                }
-                connections.pop_back();
+            if (connections[current_conn]->desire() & conn_t::Desire::qClose) {
+                close_connection(current_conn);
             } else {
                 current_conn++;
             }
         }
 #ifdef DASH_DEBUG
         if (connections.size() != connections_size_old) {
-            std::cout << std::format("Currently connections : {}",
+            std::cout << std::format("======Currently connections : {}======",
                                      connections.size())
                       << std::endl;
             connections_size_old = connections.size();

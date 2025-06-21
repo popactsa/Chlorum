@@ -2,8 +2,10 @@
 #define PROTOCOL_HPP
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <limits>
 #include <ranges>
 #include <string_view>
@@ -18,7 +20,7 @@ concept LinearConstContainer = requires(const T t) {
     { t.size() } -> std::convertible_to<std::uint32_t>;
 };
 struct Packet {
-    static constexpr std::uint32_t qHeaderLen = sizeof(std::uint16_t);
+    static constexpr std::uint32_t qHeaderLen = sizeof(std::uint32_t);
     static constexpr std::uint32_t qMaxMsgLen
         = std::numeric_limits<std::uint16_t>::max();
     static constexpr std::uint32_t qPacketLen = qHeaderLen + qMaxMsgLen;
@@ -27,8 +29,12 @@ struct Packet {
         requires LinearConstContainer<T>
     Packet(const T& msg_owner);
     template<typename T>
+        requires LinearConstContainer<T>
+    Packet(const T& buf, std::uint32_t& head, std::uint32_t tail);
+    template<typename T>
     Packet(const T* msg, std::uint32_t sz);
     Packet(std::string_view msg);
+
     constexpr const char* rdata() const noexcept;
     constexpr char* wdata() noexcept;
     constexpr const char* rmsg() const noexcept;
@@ -100,6 +106,21 @@ Packet::Packet(const T& msg_owner) :
 constexpr auto Packet::rmsg_range() const noexcept {
     return std::ranges::subrange(data_.begin() + qHeaderLen,
                                  data_.begin() + qHeaderLen + msg_sz_);
+}
+
+template<typename T>
+    requires LinearConstContainer<T>
+Packet::Packet(const T& buf, std::uint32_t& head, std::uint32_t tail) {
+    assert(tail >= head);
+    if (tail - head < qHeaderLen) {
+        throw PacketException("Segmentation of packet");
+    }
+    std::memcpy(&msg_sz_, buf.data() + head, qHeaderLen);
+    if (tail - head < qHeaderLen + msg_sz_) {
+        throw PacketException("Segmentation of packet");
+    }
+    std::memcpy(data_.data(), buf.data() + head, qHeaderLen + msg_sz_);
+    head += qHeaderLen + msg_sz_;
 }
 
 }  // namespace proto
