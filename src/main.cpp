@@ -35,9 +35,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     for (int i{0}; i < 4; ++i) {
         threads.emplace_back(run_client_auto, i);
     }
-    for (int i{0}; i < 4; ++i) {
-        threads[i].join();
-    }
+    threads.clear();
     std::cout << "Done!" << std::endl;
     return 0;
 }

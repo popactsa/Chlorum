@@ -77,7 +77,7 @@ private:
     // in future a timer can be applied so when it expires
     // shrink_to_fit() can be executed
     // [] recv_buf_ and send_buf_ work as queues:
-    // {.....<head------------tail>........}
+    // <--- flush {.....<head------------tail>......} <--- fill
     // Data is taken from head, added from tail
     std::vector<char> recv_buf_;
     std::vector<char> send_buf_;
@@ -153,8 +153,8 @@ void TcpConnection<Packet_t>::write_packet(const Packet_t& packet) {
 
 // I chose to use 'std::optional + noexcept' instead of
 // RVO + exceptions, considering there will be frequent
-// packet assembly errors. Also, i think std::move for
-// sizeof(dash::proto::Packet)~24 bytes is efficient enough
+// packet assembly errors. Also, i think consider ownership
+// transferring of std::array with std::move efficient enough
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
 std::optional<Packet_t> TcpConnection<Packet_t>::read_packet() noexcept {
@@ -246,7 +246,6 @@ void TcpConnection<Packet_t>::read_all() {
             exc_case = ExcCase::qCantRead;
             break;
         } else if (rv == 0) {
-            // unexpected eof if it is a first attempt to read
             exc_case = ExcCase::qEOF;
             break;
         }
@@ -275,7 +274,7 @@ void TcpConnection<Packet_t>::read_all() {
 template<typename Packet_t>
     requires PacketFormat<Packet_t>
 void TcpConnection<Packet_t>::lazy_erasure(std::vector<char>& buf) noexcept {
-    // Pretty not extensible
+    // Pretty smelly
     std::uint32_t& head = &buf == &recv_buf_ ? recv_buf_head_ : send_buf_head_;
     std::uint32_t& tail = &buf == &recv_buf_ ? recv_buf_tail_ : send_buf_tail_;
     assert(tail >= head);

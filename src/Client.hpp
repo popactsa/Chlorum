@@ -65,7 +65,7 @@ void Client<Packet_t>::do_something(int arg) noexcept {
             csock_.write_all();
             sent++;
             dash::rc_free_print(
-                std::string(std::format("CLIENT SENT: {}\n", msg)));
+                std::string(std::format("CLIENT {} SENT: {}\n", arg, msg)));
         }
 
         if (pfd.revents & POLLIN) {
@@ -76,7 +76,7 @@ void Client<Packet_t>::do_something(int arg) noexcept {
                 for (char c : read->rmsg_range()) {
                     msg += c;
                 }
-                msg = std::format("CLIENT RECV: {}\n", msg);
+                msg = std::format("CLIENT {} RECV: {}\n", arg, msg);
                 dash::rc_free_print(msg);
                 i++;
             }
