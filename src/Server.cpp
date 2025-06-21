@@ -89,7 +89,7 @@ void Server::event_loop() {
         }
         errno = 0;
         int rv = ::poll(
-            poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), 500);
+            poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), -1);
         if (rv < 0 && errno != EINTR) {
             throw dash::SocketException("Poll error");
         }

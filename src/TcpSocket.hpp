@@ -43,7 +43,7 @@ public:
     static constexpr std::uint32_t qHeadTriggerDist = 30;
     // = qBufMaxSize - Packet_t::qPacketLen;
     static constexpr std::uint32_t qBufInitSize = qBufMaxSize / 8;
-    static constexpr std::uint32_t qMaxFailedReadAttempts = 10;
+    static constexpr std::uint32_t qMaxFailedReadAttempts = 1000;
     static_assert(qBufMaxSize >= qBufInitSize);
     static_assert(qHeadTriggerDist <= qBufMaxSize - Packet_t::qPacketLen);
 
@@ -163,6 +163,7 @@ std::optional<Packet_t> TcpConnection<Packet_t>::read_packet() noexcept {
         recv_buf_head_ = 0;
         recv_buf_tail_ = 0;
         failed_attempts_to_read = 0;
+        desire_ |= Desire::qClose;
         return {};
     }
     try {
@@ -282,7 +283,8 @@ void TcpConnection<Packet_t>::lazy_erasure(std::vector<char>& buf) noexcept {
         head = 0;
         tail = 0;
     } else if (head > qHeadTriggerDist) {
-        buf.erase(buf.begin(), buf.begin() + head);
+        std::ranges::for_each(
+            buf.begin(), buf.begin() + head, [](auto& it) { it = 0; });
         tail -= head;
         head = 0;
     }
