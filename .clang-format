@@ -33,8 +33,17 @@ KeepEmptyLines:
   AtStartOfFile: false
 
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlignArrayOfStructures: Right
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: true
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AlignCompound: true
+  AcrossEmptyLines: false
+  AlignFunctionDeclarations: true
+  AcrossComments: true
 
 BreakBeforeBinaryOperators: All
 

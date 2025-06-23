@@ -23,6 +23,7 @@ struct Packet {
     static constexpr std::uint32_t qMaxMsgLen
         = std::numeric_limits<std::uint16_t>::max();
     static constexpr std::uint32_t qPacketLen = qHeaderLen + qMaxMsgLen;
+
     Packet() noexcept;
     template<typename T>
         requires LinearConstContainer<T>
@@ -34,15 +35,15 @@ struct Packet {
     Packet(const T* msg, std::uint32_t sz);
     Packet(std::string_view msg);
 
-    constexpr const char* rdata() const noexcept;
-    constexpr char* wdata() noexcept;
-    constexpr const char* rmsg() const noexcept;
-    constexpr char* wmsg() noexcept;
-    constexpr std::uint32_t msg_sz() const noexcept;
-    constexpr auto rmsg_range() const noexcept;
-    constexpr std::uint32_t size() const noexcept;
+    constexpr const char*        rdata() const noexcept;
+    constexpr char*              wdata() noexcept;
+    constexpr const char*        rmsg() const noexcept;
+    constexpr char*              wmsg() noexcept;
+    constexpr std::uint32_t      msg_sz() const noexcept;
+    constexpr auto               rmsg_range() const noexcept;
+    constexpr std::uint32_t      size() const noexcept;
     std::array<char, qPacketLen> data_;
-    std::uint32_t msg_sz_;
+    std::uint32_t                msg_sz_;
 };
 
 ///////////////////////// Exceptions /////////////////////////

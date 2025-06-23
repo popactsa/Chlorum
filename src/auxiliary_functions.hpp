@@ -12,7 +12,7 @@ namespace dash {
 
 struct RcFreePrint {
     mutable std::mutex mtx;
-    void operator()(std::string_view msg) const {
+    void               operator()(std::string_view msg) const {
         const std::lock_guard<std::mutex> lock(mtx);
         std::cout << msg << std::flush;
     }
@@ -67,8 +67,8 @@ template<typename E>
 class Flag {
 public:
     Flag(E rhs) noexcept : bits_(static_cast<std::underlying_type_t<E>>(rhs)) {}
-    Flag() = default;
-    Flag(const Flag&) = default;
+    Flag()                       = default;
+    Flag(const Flag&)            = default;
     Flag& operator=(const Flag&) = default;
 
     void reset() noexcept {
@@ -119,7 +119,7 @@ public:
     bool any() const noexcept {
         return bits_.any();
     }
-    [[nodiscard]] operator bool() const noexcept {
+    [[nodiscard]] explicit operator bool() const noexcept {
         return any();
     }
     operator std::bitset<sizeof(E) * CHAR_BIT>() const noexcept {
@@ -131,7 +131,7 @@ private:
 };
 
 constexpr std::vector<std::string> SplitString(std::string_view init,
-                                               const char sep) noexcept {
+                                               const char       sep) noexcept {
     std::vector<std::string> result;
     for (auto it = init.cbegin(), prev = it; it != init.cend();) {
         it = std::find(prev, init.cend(), sep);

@@ -5,14 +5,14 @@
 
 #include "Protocol.hpp"
 #include "Socket.hpp"
-#include "TcpSocket.hpp"
+#include "TcpConnection.hpp"
+#include "TcpListener.hpp"
 #include "auxiliary_functions.hpp"
 
 template<typename Packet_t>
     requires dash::PacketFormat<Packet_t>
 class Client {
 public:
-    Client() = default;
     Client(const dash::SocketAddrIn& addr);
     void connect(const dash::SocketAddrIn& addr);
     void do_something(int arg) noexcept;
@@ -24,6 +24,7 @@ private:
 template<typename Packet_t>
     requires dash::PacketFormat<Packet_t>
 Client<Packet_t>::Client(const dash::SocketAddrIn& addr) {
+    csock_.set_nb();
     csock_.connect(addr);
 }
 
@@ -38,8 +39,8 @@ void Client<Packet_t>::connect(const dash::SocketAddrIn& addr) {
 template<typename Packet_t>
     requires dash::PacketFormat<Packet_t>
 void Client<Packet_t>::do_something(int arg) noexcept {
-    int i = 0;
-    int sent = 0;
+    int i       = 0;
+    int sent    = 0;
     int max_msg = 3;
     while (i < max_msg) {
         pollfd pfd{csock_.fd(), 0, 0};

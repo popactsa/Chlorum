@@ -13,11 +13,13 @@ function(add_common_flags target)
         "-pedantic"
         "-march=native"
         "-fdiagnostics-color=always"
-        "$<$<CONFIG:Release>:-O2>"
+        "$<$<CONFIG:Release>:-O2;-DNDEBUG>"
         "$<$<CONFIG:Debug>:-O0;-g;-fsanitize=address;-DDASH_DEBUG>"
+        # "$<$<CONFIG:Coverage>:-O0;-g;-fsanitize=address;-fprofile-instr-generate;-fcoverage-mapping;-DDASH_DEBUG>"
     )
     target_link_options(${target} PRIVATE
         $<$<CONFIG:Debug>:-fsanitize=address>
+        # $<$<CONFIG:Coverage>:-fsanitize=address;-fprofile-instr-generate;-fcoverage-mapping>
     )
 endfunction()
 add_common_flags(${PROJECT_NAME}_run)

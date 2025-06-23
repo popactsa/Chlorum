@@ -14,7 +14,7 @@ inline static constexpr ErrorAction qDefaultErrorAction{ErrorAction::qLogging};
 
 ////////Tour of C++ 2022 B.Stroustrup p.49/////////
 template<ErrorAction action, typename exc, typename C>
-constexpr void Expect(const C& cond,
+constexpr void Expect(const C&           cond,
                       const std::string& msg = "<no message provided>") {
     if constexpr (action == ErrorAction::qThrowing) {
         if (!cond()) {

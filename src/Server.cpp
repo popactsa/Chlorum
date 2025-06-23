@@ -9,6 +9,10 @@
 #include "Socket.hpp"
 #include "auxiliary_functions.hpp"
 
+Server::Server() {
+    lsock_.set_nb();
+}
+
 void Server::start(const dash::SocketAddrIn& addr, int max_conn) {
     lsock_.start(addr, max_conn);
     try {
@@ -21,10 +25,14 @@ void Server::start(const dash::SocketAddrIn& addr, int max_conn) {
 }
 
 std::unique_ptr<Server::conn_t> Server::handle_accept() {
-    std::unique_ptr<conn_t> client = lsock_.accept_on_heap();
-    client->set_nb();
-    client->desire_ = conn_t::Desire::qRead;
-    return client;
+    if (std::unique_ptr<conn_t> client = lsock_.accept_on_heap();
+        client != nullptr) {
+        client->set_nb();
+        client->desire_ = conn_t::Desire::qRead;
+        return client;
+    } else {
+        return nullptr;
+    }
 }
 
 std::unique_ptr<Server::conn_t> Server::handle_read(
@@ -66,7 +74,7 @@ std::unique_ptr<Server::conn_t> Server::handle_write(
 
 void Server::event_loop() {
     std::vector<std::unique_ptr<conn_t>> connections;
-    std::vector<::pollfd> poll_args;
+    std::vector<::pollfd>                poll_args;
     auto close_connection = [&connections](std::uint32_t i) {
         connections[i]->close();
         std::swap(connections[i], connections.back());
@@ -87,19 +95,16 @@ void Server::event_loop() {
                 poll_args.back().events |= POLLOUT;
             }
         }
-        errno = 0;
+        errno  = 0;
         int rv = ::poll(
             poll_args.data(), reinterpret_cast<nfds_t>(poll_args.size()), -1);
         if (rv < 0 && errno != EINTR) {
             throw dash::SocketException("Poll error");
         }
         if (poll_args[0].revents) {
-            try {
-                connections.emplace_back(handle_accept());
-            } catch (...) {
-                // There are two possible cases: `lsock_` is not started or a
-                // new connection can't be accepted because of connections limit
-                // or anything else. No treatment required
+            connections.emplace_back(handle_accept());
+            if (connections.back() == nullptr) {
+                connections.pop_back();
             }
         }
         for (std::uint32_t i{1}, current_conn{0}; i < poll_args.size(); ++i) {

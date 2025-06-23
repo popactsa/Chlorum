@@ -30,26 +30,26 @@ struct SocketAddrIn {
     std::pair<const sockaddr&, socklen_t> data() const noexcept {
         return {addr_, size_};
     }
-    sockaddr addr_;
+    sockaddr  addr_;
     socklen_t size_;
 };
 
 class Socket {
 public:
     enum class Status : char {
-        qOpen = 1,
-        qBound = 1 << 1,
-        qListening = 1 << 2,
-        qConnected = 1 << 3,
-        qReusable = 1 << 4,
-        qStarted = qBound + qListening
+        qOpen        = 1,
+        qBound       = 1 << 1,
+        qReusable    = 1 << 2,
+        qNonBlocking = 1 << 3,
+        qListening   = (1 << 4) + qOpen,
+        qConnected   = (1 << 5) + qOpen,
     };
     Socket(int domain, int type, int protocol);
     void bind(const SocketAddrIn& addr);
-    int fd() const noexcept;
+    int  fd() const noexcept;
     operator int() const noexcept;
-    bool close() noexcept;
-    void set_nb();
+    bool                      close() noexcept;
+    void                      set_nb();
     inline dash::Flag<Status> status_flags() const noexcept {
         return status_flags_;
     }
@@ -57,7 +57,7 @@ public:
 
 protected:
     Socket(int fd) noexcept;
-    int fd_;
+    int                fd_;
     dash::Flag<Status> status_flags_;
 };
 ///////////////////////// Exceptions /////////////////////////

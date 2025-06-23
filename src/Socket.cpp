@@ -10,11 +10,11 @@ Socket::Socket(int domain, int type, int protocol) :
     } else {
         status_flags_ |= Status::qOpen;
     }
-    set_nb();
+    // set_nb();
 }
 
 Socket::Socket(int fd) noexcept : fd_{fd} {
-    set_nb();
+    // set_nb();
 }
 
 void Socket::bind(const SocketAddrIn& addr) {
@@ -31,7 +31,6 @@ void Socket::bind(const SocketAddrIn& addr) {
     if (::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))
         == -1) {
         std::cerr << "Can't set socket to reusable" << std::endl;
-        ;
     } else {
         status_flags_ |= Status::qReusable;
     };
@@ -42,7 +41,7 @@ void Socket::set_nb() {
         // It is considered as default action on construction, so no throw
         return;
     }
-    errno = 0;
+    errno     = 0;
     int flags = ::fcntl(fd_, F_GETFL, 0);
     if (errno) {
         throw dash::SocketException("fcntl error when reading flags");
@@ -53,6 +52,7 @@ void Socket::set_nb() {
     if (errno) {
         throw dash::SocketException("fcntl error when setting flags");
     }
+    status_flags_ |= Socket::Status::qNonBlocking;
 }
 
 int Socket::fd() const noexcept {

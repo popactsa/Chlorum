@@ -19,7 +19,7 @@ set(CMAKE_C_FLAGS_RELEASE "")
 set(CMAKE_CXX_FLAGS_RELEASE "")
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Build)
 endif()
 
 find_program(CLANGXX_FOUND NAMES "clang++")
@@ -39,6 +39,7 @@ elseif(GCC_FOUND)
 endif()
 
 # set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost REQUIRED COMPONENTS system)
