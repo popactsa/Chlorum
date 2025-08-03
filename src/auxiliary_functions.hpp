@@ -1,5 +1,5 @@
-#ifndef AUXILIARY_FUNCTIONS_H
-#define AUXILIARY_FUNCTIONS_H
+#ifndef AUXILIARY_FUNCTIONS_HPP
+#define AUXILIARY_FUNCTIONS_HPP
 #include <atomic>
 #include <bitset>
 #include <cassert>
@@ -8,20 +8,11 @@
 #include <format>
 #include <iostream>
 #include <mutex>
-/////
-#include <boost/asio.hpp>
-#include <boost/beast.hpp>
-#include <boost/system.hpp>
 
 namespace dash {
 template<typename... Args>
-inline void debug_log([[maybe_unused]] const std::format_string<Args...>& fmt) {
-#ifdef NDEBUG
-    std::cerr << "DEBUG : " << fmt << std::endl;
-#endif    // NDEBUG
-}
 
-inline void rc_free_print(std::string_view msg) {
+inline void safe_print(std::string_view msg) {
     static std::mutex           mtx;
     std::lock_guard<std::mutex> lock(mtx);
     std::cout << msg << std::flush;
@@ -40,7 +31,7 @@ template<
     ErrorAction action,
     typename exc,
     typename C>
-constexpr void Expect(
+constexpr void expect(
     const C&           cond,
     const std::string& msg = "<no message provided>") {
     if constexpr (action == ErrorAction::qThrowing) {
@@ -77,18 +68,18 @@ struct FinalAction {
 
 template<typename F>
 [[nodiscard]]
-inline auto Finally(F f) noexcept {
+inline auto finally(F f) noexcept {
     return FinalAction{f};
 }
 
 // Type tag dispatching
 template<typename T>
-struct TheirOwnAddress {
+struct TypeTagDispatchByAddress {
     static constexpr char address = 0;
 };
 
 template<typename T>
-inline constexpr const void* qTypeTag = &TheirOwnAddress<T>::address;
+inline constexpr const void* qTypeTag = &TypeTagDispatchByAddress<T>::address;
 
 template<typename T>
 inline static std::size_t type_tag() noexcept {
@@ -102,7 +93,7 @@ template<typename TimerT = std::chrono::milliseconds>
         TimerT,
         std::chrono::milliseconds>
 [[nodiscard]]
-auto SetScopedTimer(std::string_view timer_name) noexcept {
+auto set_scoped_timer(std::string_view timer_name) noexcept {
     const auto start_time = std::chrono::system_clock::now();
     return FinalAction{[timer_name, start_time]() {
         const char* quot = "===============";
@@ -123,7 +114,7 @@ template<typename TimerT = std::chrono::microseconds>
         TimerT,
         std::chrono::microseconds>
 [[nodiscard]]
-auto SetScopedTimer(std::string_view timer_name = "unnamed") noexcept {
+auto set_scoped_timer(std::string_view timer_name = "unnamed") noexcept {
     constinit static std::atomic<std::uint32_t> timer_id{0};
     timer_id++;
     const auto start_time = std::chrono::high_resolution_clock::now();
@@ -222,22 +213,5 @@ public:
 private:
     std::bitset<sizeof(E) * CHAR_BIT> bits_;
 };
-
-// #ifdef BOOST_VERSION
-// // Include boost before this header!
-constexpr void print_boost_ec(const boost::system::error_code& ec) {
-    std::cerr << std::format(
-        "Error occured(EC: {}).\n  Message : {}\n", ec.value(), ec.message());
-}
-
-// #endif // BOOST_SYSTEM_VERSION
 }    // namespace dash
-// #ifdef BOOST_VERSION
-// // Include boost before this header!
-namespace asio      = boost::asio;
-namespace net       = boost::asio::ip;
-namespace beast     = boost::beast;
-namespace http      = boost::beast::http;
-namespace websocket = boost::beast::websocket;
-// #endif // BOOST_VERSION
-#endif    // AUXILIARY_FUNCTIONS_H
+#endif    // AUXILIARY_FUNCTIONS_HPP
