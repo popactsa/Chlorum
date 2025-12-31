@@ -144,7 +144,7 @@ SpacesInLineCommentPrefix:
   Maximum: 2
 SpacesInParens: Never
 SpacesInSquareBrackets: false
-Standard: c++20
+# Standard: c17
 TabWidth: 4
 UseTab: Never
 WrapNamespaceBodyWithEmptyLines: Never
