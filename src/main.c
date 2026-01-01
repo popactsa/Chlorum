@@ -1,24 +1,14 @@
-#include <stdlib.h>
-#define LOGGING 0
-
+#include <stdio.h>
 #include "arena.h"
 #include "error_handling.h"
 
 int main(void) {
-    ErrorCode_t ec;
-
-    ec = MEMBND;
-    CHECK(ec, INFO, "hi");
-    CHECK(ec, WARN, NULL);
-
-    int error = 5;
-    CHECK_ANY(error, INFO, "hello", 2, 3, 4);
-    CHECK_ANY(error, WARN, "hello", 1, 5);
-    CHECK_ANY(error, WARN, "hello");
-
+    gLogging = INFO;
     Arena_t* arena;
-    if (CHECK(construct_arena(&arena, 3), ERROR, "Failed arena allocation")) {
-        exit(EXIT_FAILURE);
-    }
+    i32      arena_cap = 128 * alignof(i32);
+    CHECK(construct_arena(&arena, arena_cap), EXIT, "Failed arena allocation");
+    i32* where;
+    i32  sz = 4 * alignof(i32);
+    mem_acquire_on_arena((void**)&where, arena, sz * sizeof(i32));
     return 0;
 }

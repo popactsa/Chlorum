@@ -6,6 +6,7 @@
 
 const i32 kMaxArrSz = 256;
 const i32 kMaxStrSz = 256;
+ErrorLevel_t gLogging = INFO;
 
 static const char* ectos(ErrorCode_t ec) {
     switch (ec) {
@@ -13,6 +14,8 @@ static const char* ectos(ErrorCode_t ec) {
         return "OK";
     case OTHER:
         return "OTHER";
+    case MEMALF:
+        return "MEMALF";
     case MEMBND:
         return "MEMBND";
     case MLOGIC:
@@ -31,11 +34,28 @@ static const char* eltocs(ErrorLevel_t ec) {
     case WARN:
         return ANSI_YELLOW "[WARN]";
     case ERROR:
-    case KILL:
+    case EXIT:
         return ANSI_RED "[ERROR]";
     default:
         return ANSI_GREEN "[UNKNOWN]";
     }
+}
+
+void printf_el(
+    ErrorLevel_t elvl,
+    const char* fmt,
+    int line,
+    const char* file,
+    ...) {
+    const char* el_desc;
+    va_list fmt_args;
+
+    va_start(fmt_args);
+    el_desc = eltocs(elvl);
+    printf("%1$s Logging at l:%2$d [%3$s]:\n"
+            "%1$s ", el_desc, line, file);
+    vprintf(fmt, fmt_args);
+    printf(ANSI_RESET);
 }
 
 ErrorCode_t check(
@@ -44,14 +64,14 @@ ErrorCode_t check(
     const char*  msg,
     int          line,
     const char*  file) {
-    if (LOGGING > elvl) {
+    if (gLogging > elvl) {
         return ec;
     }
     if (ec == OK) {
         return ec;
     }
     print_log(ec, elvl, msg, line, file);
-    if (elvl == KILL) {
+    if (elvl == EXIT) {
         exit(EXIT_FAILURE);
     }
     return ec;
@@ -63,14 +83,14 @@ int check_any(
     const char*  msg,
     int          line,
     const char*  file) {
-    if (LOGGING > elvl) {
+    if (gLogging > elvl) {
         return error;
     }
     if (error == 0) {
         return error;
     }
     print_log_any(error, elvl, msg, line, file);
-    if (elvl == KILL) {
+    if (elvl == EXIT) {
         exit(EXIT_FAILURE);
     }
     return error;
@@ -85,7 +105,7 @@ int check_any_omit(
     ...) {
     va_list omit;
     int     omit_cnt;
-    if (LOGGING > elvl) {
+    if (gLogging > elvl) {
         return error;
     }
     if (error == 0) {
@@ -99,7 +119,7 @@ int check_any_omit(
         }
     }
     print_log_any(error, elvl, msg, line, file);
-    if (elvl == KILL) {
+    if (elvl == EXIT) {
         exit(EXIT_FAILURE);
     }
     return error;

@@ -7,15 +7,8 @@ typedef enum ErrorLevel {
     INFO,
     WARN,
     ERROR,
-    KILL
+    EXIT
 } ErrorLevel_t;
-
-#ifndef LOGGING
-#define LOGGING INFO /*! The least level of errors to log */
-#endif
-
-extern const i32 kMaxArrSz;
-extern const i32 kMaxStrSz;
 
 typedef enum ErrorCode {
     OK,        // OK
@@ -25,6 +18,27 @@ typedef enum ErrorCode {
     MLOGIC,    // Math logic error
     CONTRV,    // Contract violation
 } ErrorCode_t;
+
+extern const i32    kMaxArrSz;
+extern const i32    kMaxStrSz;
+extern ErrorLevel_t gLogging;
+
+#define PRINT_EL(elvl, msg, ...) printf_el(elvl, msg, __LINE__, __FILE__)
+
+// TODO: Add format msg version
+#define CHECK(ec, elvl, msg) check(ec, elvl, msg, __LINE__, __FILE__)
+
+// TODO: Add format msg version
+#define CHECK_ANY(error, elvl, msg, ...) \
+    check_any##__VA_OPT__(_omit)(        \
+        error, elvl, msg, __LINE__, __FILE__ __VA_OPT__(, __VA_ARGS__))
+
+void printf_el(
+    ErrorLevel_t elvl,
+    const char*  fmt,
+    int          line,
+    const char*  file,
+    ...);
 
 void print_log(
     ErrorCode_t  ec,
@@ -40,20 +54,12 @@ void print_log_any(
     int          line,
     const char*  file);
 
-// TODO: Add format msg version
-#define CHECK(ec, elvl, msg) check(ec, elvl, msg, __LINE__, __FILE__)
-
 ErrorCode_t check(
     ErrorCode_t  ec,
     ErrorLevel_t elvl,
     const char*  msg,
     int          line,
     const char*  file);
-
-// TODO: Add format msg version
-#define CHECK_ANY(error, elvl, msg, ...) \
-    check_any##__VA_OPT__(_omit)(        \
-        error, elvl, msg, __LINE__, __FILE__ __VA_OPT__(, __VA_ARGS__))
 
 int check_any(
     int          error,
