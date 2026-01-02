@@ -1,33 +1,33 @@
 #include "error_handling.h"
 #include <stdarg.h>
+#include <string.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "iomanip.h"
 
-const i32 kMaxArrSz = 256;
-const i32 kMaxStrSz = 256;
-ErrorLevel_t gLogging = INFO;
+const i32  kMaxStrSz = 256;
+ErrorLevel gLogging  = INFO;
+ErrorLevel gAsserts  = INFO;
 
-static const char* ectos(ErrorCode_t ec) {
+static const char* ectos(ErrorCode ec) {
     switch (ec) {
     case OK:
         return "OK";
-    case OTHER:
-        return "OTHER";
     case MEMALF:
-        return "MEMALF";
+        return "MEMALF(Memory allocation fail)";
     case MEMBND:
-        return "MEMBND";
+        return "MEMBND(Allocated memory boundaries violation)";
     case MLOGIC:
-        return "MLOGIC";
+        return "MLOGIC(Math logic error)";
     case CONTRV:
-        return "CONTRV";
+        return "CONTRV(Contract violation)";
     default:
         return "UNKNOWN";
     }
 }
 
-static const char* eltocs(ErrorLevel_t ec) {
+static const char* eltocs(ErrorLevel ec) {
     switch (ec) {
     case INFO:
         return ANSI_BLUE "[INFO]";
@@ -42,28 +42,55 @@ static const char* eltocs(ErrorLevel_t ec) {
 }
 
 void printf_el(
-    ErrorLevel_t elvl,
+    ErrorLevel  elvl,
     const char* fmt,
-    int line,
+    int         line,
     const char* file,
     ...) {
     const char* el_desc;
-    va_list fmt_args;
+    va_list     fmt_args;
 
     va_start(fmt_args);
     el_desc = eltocs(elvl);
-    printf("%1$s Logging at l:%2$d [%3$s]:\n"
-            "%1$s ", el_desc, line, file);
+    printf(
+        "%1$s Logging at l:%2$d [%3$s]:\n"
+        "%1$s ",
+        el_desc,
+        line,
+        file);
     vprintf(fmt, fmt_args);
     printf(ANSI_RESET);
 }
 
-ErrorCode_t check(
-    ErrorCode_t  ec,
-    ErrorLevel_t elvl,
-    const char*  msg,
-    int          line,
-    const char*  file) {
+bool leveled_assert(
+    bool        boolean,
+    ErrorLevel  elvl,
+    const char* fmt,
+    int         line,
+    const char* file,
+    ...) {
+    if (gAsserts > elvl) {
+        return false;
+    }
+    if (!boolean) {
+        if (gLogging <= elvl) {
+            va_list args;
+            va_start(args);
+            printf_el(elvl, fmt, line, file, args);
+        }
+        if (elvl == EXIT) {
+            exit(EXIT_FAILURE);
+        }
+    }
+    return boolean;
+}
+
+ErrorCode check(
+    ErrorCode   ec,
+    ErrorLevel  elvl,
+    const char* msg,
+    int         line,
+    const char* file) {
     if (gLogging > elvl) {
         return ec;
     }
@@ -77,60 +104,63 @@ ErrorCode_t check(
     return ec;
 }
 
-int check_any(
-    int          error,
-    ErrorLevel_t elvl,
-    const char*  msg,
-    int          line,
-    const char*  file) {
+int check_errno(
+    ErrorLevel  elvl,
+    const char* msg,
+    int         line,
+    const char* file) {
+    int saved_errno;
+    saved_errno = errno;
+    errno = 0;
     if (gLogging > elvl) {
-        return error;
+        return saved_errno;
     }
-    if (error == 0) {
-        return error;
+    if (saved_errno == 0) {
+        return saved_errno;
     }
-    print_log_any(error, elvl, msg, line, file);
+    print_log_errno_snapshot(saved_errno, elvl, msg, line, file);
     if (elvl == EXIT) {
         exit(EXIT_FAILURE);
     }
-    return error;
+    return saved_errno;
 }
 
-int check_any_omit(
-    int          error,
-    ErrorLevel_t elvl,
-    const char*  msg,
-    int          line,
-    const char*  file,
+int check_errno_omit(
+    ErrorLevel  elvl,
+    const char* msg,
+    int         line,
+    const char* file,
     ...) {
     va_list omit;
-    int     omit_cnt;
+    int     saved_errno, omit_cnt;
+    saved_errno = errno;
+    errno = 0;
     if (gLogging > elvl) {
-        return error;
+        return saved_errno;
     }
-    if (error == 0) {
-        return error;
+    if (saved_errno == 0) {
+        return saved_errno;
     }
     va_start(omit);
     omit_cnt = va_arg(omit, int);
     for (int i = 0; i < omit_cnt; ++i) {
-        if (error == va_arg(omit, int)) {
-            return error;
+        if (saved_errno == va_arg(omit, int)) {
+            return saved_errno;
         }
     }
-    print_log_any(error, elvl, msg, line, file);
+    print_log_errno_snapshot(saved_errno, elvl, msg, line, file);
     if (elvl == EXIT) {
         exit(EXIT_FAILURE);
     }
-    return error;
+    return saved_errno;
 }
 
 void print_log(
-    ErrorCode_t  ec,
-    ErrorLevel_t elvl,
-    const char*  msg,
-    int          line,
-    const char*  file) {
+    ErrorCode   ec,
+    ErrorLevel  elvl,
+    const char* msg,
+    int         line,
+    const char* file) {
     const char *ec_desc, *el_desc;
 
     ec_desc = ectos(ec);
@@ -156,32 +186,32 @@ void print_log(
     }
 }
 
-void print_log_any(
-    int          error,
-    ErrorLevel_t elvl,
-    const char*  msg,
-    int          line,
-    const char*  file) {
+void print_log_errno_snapshot(
+    int         errno_snapshot,
+    ErrorLevel  elvl,
+    const char* msg,
+    int         line,
+    const char* file) {
     const char* el_desc;
 
     el_desc = eltocs(elvl);
     if (msg) {
         fprintf(
             stderr,
-            "%1$s Error %4$d occured at l:%2$d [%3$s]\n"
+            "%1$s Error %4$s occured at l:%2$d [%3$s]\n"
             "%1$s Description: %5$s\n" ANSI_RESET,
             el_desc,
             line,
             file,
-            error,
+            strerror(errno_snapshot),
             msg);
     } else {
         fprintf(
             stderr,
-            "%1$s Error %4$d occured at l:%2$d [%3$s]\n" ANSI_RESET,
+            "%1$s Error %4$s occured at l:%2$d [%3$s]\n" ANSI_RESET,
             el_desc,
             line,
             file,
-            error);
+            strerror(errno_snapshot));
     }
 }

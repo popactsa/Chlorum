@@ -15,15 +15,6 @@ set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build" FORCE)
 set(CMAKE_C_FLAGS_DEBUG "" CACHE STRING "Debug flags" FORCE)
 set(CMAKE_C_FLAGS_RELEASE "" CACHE STRING "Release flags" FORCE)
 
-# set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
-
-# set(Boost_USE_STATIC_LIBS OFF)
-# set(Boost_USE_MULTITHREADED ON)
-# set(Boost_USE_STATIC_RUNTIME OFF)
-# find_package(Boost REQUIRED COMPONENTS system)
-# set(OPENSSL_USE_STATIC_LIBS OFF)
-# find_package(OpenSSL REQUIRED)
-
 include_directories(src)
 add_subdirectory(src)
 add_subdirectory(tests)
