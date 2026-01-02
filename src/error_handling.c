@@ -91,6 +91,9 @@ ErrorCode check(
     const char* msg,
     int         line,
     const char* file) {
+    if (gAsserts > elvl) {
+        return OK;
+    }
     if (gLogging > elvl) {
         return ec;
     }

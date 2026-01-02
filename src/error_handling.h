@@ -33,16 +33,10 @@ extern ErrorLevel gAsserts;
 #define CHECK(ec, elvl, msg) if (!check(ec, elvl, msg, __LINE__, __FILE__))
 
 // TODO: Add format msg version
-#define LOG_ERRNO(statement, elvl, msg, ...) \
-    statement,                               \
-        !check_errno##__VA_OPT__(_omit)(     \
-            error, elvl, msg, __LINE__, __FILE__ __VA_OPT__(, __VA_ARGS__))
-
-// TODO: Add format msg version
 #define CHECK_ERRNO(statement, elvl, msg, ...) \
-    statement,                                 \
-        check_errno##__VA_OPT__(_omit)(        \
-            error, elvl, msg, __LINE__, __FILE__ __VA_OPT__(, __VA_ARGS__))
+    statement;                                 \
+    if (!check_errno##__VA_OPT__(_omit)(       \
+            elvl, msg, __LINE__, __FILE__ __VA_OPT__(, __VA_ARGS__)))
 
 void printf_el(
     ErrorLevel  elvl,
