@@ -2,6 +2,7 @@
 #define YAML_READER_H
 
 #include <stdio.h>
+#include "arena.h"
 #include "error_handling.h"
 #include "type_aliases.h"
 
@@ -45,6 +46,8 @@ typedef struct ClYamlReader_s {
     FILE* file;
 
     enum {
+        CL_YAML_STATE_NULL,
+        CL_YAML_STATE_INIT,
         CL_YAML_STATE_VALUE_ARRAY,
         CL_YAML_STATE_PROP,
         CL_YAML_STATE_PARSE_ERROR,
@@ -52,8 +55,11 @@ typedef struct ClYamlReader_s {
         CL_YAML_STATE_EOF
     } state;
 
-    ClYamlVariable* hierarchy;
+    ClArena* hierarchy;
+    i32      hierarchy_depth;
 } ClYamlReader;
+
+#define CL_YAML_HIERARCHY_MAX_SIZE 5
 
 ErrorCode ClYamlReaderInit(
     ClYamlReader* reader,
@@ -61,5 +67,6 @@ ErrorCode ClYamlReaderInit(
 ErrorCode ClYamlReaderNext(
     const ClYamlVariable* variable,
     ClYamlReader*         reader);
+ErrorCode ClYamlReaderFinish(ClYamlReader* reader);
 
 #endif /* YAML_READER_H */

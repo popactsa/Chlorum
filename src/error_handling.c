@@ -1,13 +1,13 @@
 #include "error_handling.h"
-#include <stdarg.h>
-#include <string.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "iomanip.h"
 
 const i32  kMaxStrSz = 256;
-ErrorLevel gLogging  = INFO;
+ErrorLevel gChecks  = INFO;
 ErrorLevel gAsserts  = INFO;
 
 static const char* ectos(ErrorCode ec) {
@@ -22,6 +22,8 @@ static const char* ectos(ErrorCode ec) {
         return "MLOGIC(Math logic error)";
     case CONTRV:
         return "CONTRV(Contract violation)";
+    case SYSCF:
+        return "SYSCF(System call fail)";
     default:
         return "UNKNOWN";
     }
@@ -41,9 +43,9 @@ static const char* eltocs(ErrorLevel ec) {
     }
 }
 
-void printf_el(
+void print_log_bool(
     ErrorLevel  elvl,
-    const char* fmt,
+    const char*       fmt,
     int         line,
     const char* file,
     ...) {
@@ -53,13 +55,13 @@ void printf_el(
     va_start(fmt_args);
     el_desc = eltocs(elvl);
     printf(
-        "%1$s Logging at l:%2$d [%3$s]:\n"
+        "%1$s Assertion fail at l:%2$d [%3$s]:\n"
         "%1$s ",
         el_desc,
         line,
         file);
     vprintf(fmt, fmt_args);
-    printf(ANSI_RESET);
+    printf(ANSI_RESET "\n");
 }
 
 bool leveled_assert(
@@ -72,11 +74,18 @@ bool leveled_assert(
     if (gAsserts > elvl) {
         return false;
     }
+    if (errno) {
+        if (LOG_ERRNO_RESET) {
+            CHECK_ERRNO(NULL, INFO, "Intentional errno reset to 0."){};
+        } else {
+            errno = 0;
+        }
+    }
     if (!boolean) {
-        if (gLogging <= elvl) {
+        if (gChecks <= elvl) {
             va_list args;
             va_start(args);
-            printf_el(elvl, fmt, line, file, args);
+            print_log_bool(elvl, fmt, line, file, args);
         }
         if (elvl == EXIT) {
             exit(EXIT_FAILURE);
@@ -94,7 +103,14 @@ ErrorCode check(
     if (gAsserts > elvl) {
         return OK;
     }
-    if (gLogging > elvl) {
+    if (errno) {
+        if (LOG_ERRNO_RESET) {
+            CHECK_ERRNO(NULL, INFO, "Intentional errno reset to 0."){};
+        } else {
+            errno = 0;
+        }
+    }
+    if (gChecks > elvl) {
         return ec;
     }
     if (ec == OK) {
@@ -114,8 +130,8 @@ int check_errno(
     const char* file) {
     int saved_errno;
     saved_errno = errno;
-    errno = 0;
-    if (gLogging > elvl) {
+    errno       = 0;
+    if (gChecks > elvl) {
         return saved_errno;
     }
     if (saved_errno == 0) {
@@ -137,8 +153,8 @@ int check_errno_omit(
     va_list omit;
     int     saved_errno, omit_cnt;
     saved_errno = errno;
-    errno = 0;
-    if (gLogging > elvl) {
+    errno       = 0;
+    if (gChecks > elvl) {
         return saved_errno;
     }
     if (saved_errno == 0) {
@@ -172,7 +188,7 @@ void print_log(
         fprintf(
             stderr,
             "%1$s Error %4$s occured at l:%2$d [%3$s]\n"
-            "%1$s Description: %5$s\n" ANSI_RESET,
+            "%1$s %5$s\n" ANSI_RESET,
             el_desc,
             line,
             file,
@@ -202,7 +218,7 @@ void print_log_errno_snapshot(
         fprintf(
             stderr,
             "%1$s Error %4$s occured at l:%2$d [%3$s]\n"
-            "%1$s Description: %5$s\n" ANSI_RESET,
+            "%1$s %5$s\n" ANSI_RESET,
             el_desc,
             line,
             file,

@@ -2,18 +2,18 @@
 #include <stdlib.h>
 #include "error_handling.h"
 
-ArenaNode* arena_nodes_head = NULL;
-i32        arena_nodes_cnt  = 0;
+ClArenaNode* arena_nodes_head = NULL;
+i32          arena_nodes_cnt  = 0;
 
 ErrorCode construct_arena(
-    Arena**   result,
+    ClArena** result,
     const i32 cap) {
-    ArenaNode* arena_node;
-    Arena*     arena;
+    ClArenaNode* arena_node;
+    ClArena*     arena;
     ASSERT(result, ERROR, "Nowhere to return result. NULL received") {
         return CONTRV;
     }
-    arena_node = malloc(sizeof(ArenaNode));
+    arena_node = malloc(sizeof(ClArenaNode));
     ASSERT(arena_node, WARN, "Can't allocate arena node") {
         return MEMALF;
     }
@@ -37,7 +37,7 @@ ErrorCode construct_arena(
 }
 
 void destruct_arenas(void) {
-    ArenaNode* next;
+    ClArenaNode* next;
     while (arena_nodes_cnt) {
         next = arena_nodes_head->next;
         if (arena_nodes_head->arena.begin) {
@@ -51,7 +51,7 @@ void destruct_arenas(void) {
 
 ErrorCode mem_acquire_on_arena(
     void**    result,
-    Arena*    arena,
+    ClArena*  arena,
     const i32 sz) {
     ASSERT(
         arena->cap >= arena->sz + sz,
@@ -68,7 +68,7 @@ ErrorCode mem_acquire_on_arena(
 }
 
 // TODO: Fix nodes deallocation
-ErrorCode mem_release_arena(Arena* arena) {
+ErrorCode mem_release_arena(ClArena* arena) {
     ASSERT(arena, WARN, "NULL as ptr to arena passed") {
         return CONTRV;
     }
@@ -80,7 +80,7 @@ ErrorCode mem_release_arena(Arena* arena) {
 }
 
 ErrorCode mem_realloc_arena(
-    Arena*    arena,
+    ClArena*  arena,
     const i32 new_cap) {
     char* realloced;
     ASSERT(arena, WARN, "NULL as ptr to arena passed") {
