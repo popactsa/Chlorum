@@ -50,7 +50,7 @@ void destruct_arenas(void) {
 }
 
 ErrorCode mem_acquire_on_arena(
-    void**    result,
+    i32* offset,
     ClArena*  arena,
     const i32 sz) {
     ASSERT(
@@ -62,7 +62,9 @@ ErrorCode mem_acquire_on_arena(
     ASSERT(arena, WARN, "NULL as ptr to arena passed") {
         return CONTRV;
     }
-    *result    = arena->begin + arena->sz;
+    if (offset) {
+        *offset = arena->sz;
+    }
     arena->sz += sz;
     return OK;
 }

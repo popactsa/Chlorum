@@ -18,6 +18,7 @@ typedef enum ErrorLevel_e {
 /* More or less common error codes used as return values in Chlorum functions */
 typedef enum ErrorCode_e {
     OK,        // OK
+    ERRST,     // Erroneous state
     MEMALF,    // Memory allocation fail
     MEMBND,    // Allocated memory boundaries violation
     MLOGIC,    // Math logic error
@@ -26,17 +27,16 @@ typedef enum ErrorCode_e {
 } ErrorCode;
 
 /* Use kMaxStrSz at snprintf as upper bound for string length */
-extern const i32  kMaxStrSz;
+constexpr i32     kMaxStrSz = 256;
 extern ErrorLevel gChecks;
 extern ErrorLevel gAsserts;
+/* 1 - Errno resets at 'CHECK_ERRNO' will be logged as INFO
+ * 0 - No logging
+ */
+constexpr bool    kLogErrnoReset = true;
 
 // TODO: Add tracing
 // TODO: Add format msg version for asserts, check functions and macroses
-
-/* 1 - Errno resets at 'check' will be logged as INFO
- * 0 - No logging
- */
-#define LOG_ERRNO_RESET 1
 
 /* Check if boolean value is equal true if elvl is enabled with gAsserts
  * If boolean is equal false, logging with elvl is performed
@@ -77,6 +77,7 @@ extern ErrorLevel gAsserts;
 
 /* Check if errno is OK if elvl is enabled with gChecks
  * If errno is not 0, logging with elvl is performed
+ * errno is set to 0 before 'statement;'
  *
  * Line and file where called is printed
  * Message can be provided optionally. If NULL passed, no user message printed
@@ -84,10 +85,24 @@ extern ErrorLevel gAsserts;
  * Example usage: CHECK_ERRNO(malloc(VERY_MANY), WARN, "Hello, something is
  * wrong"){verybad = true;}
  * */
-#define CHECK_ERRNO(statement, elvl, msg, ...) \
-    statement;                                 \
-    if (!check_errno##__VA_OPT__(_omit)(       \
+#define CHECK_ERRNO(statement, elvl, msg, ...)                            \
+    if (errno) {                                                          \
+        if (errno && kLogErrnoReset) {                                    \
+            print_log_errno_snapshot(                                     \
+                errno, INFO, "Errno intentionally reset to 0.", __LINE__, \
+                __FILE__);                                                \
+        }                                                                 \
+        errno = 0;                                                        \
+    }                                                                     \
+    statement;                                                            \
+    if (!check_errno##__VA_OPT__(_omit)(                                  \
             elvl, msg, __LINE__, __FILE__ __VA_OPT__(, __VA_ARGS__)))
+
+#define RETHROW(ecode)    \
+    {                     \
+        if (ecode) {      \
+            return ecode; \
+        }
 
 void print_log_bool(
     ErrorLevel  elvl,

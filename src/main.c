@@ -6,8 +6,6 @@
 int main(
     [[maybe_unused]] int    argc,
     [[maybe_unused]] char** argv) {
-    gChecks = INFO;
-    gAsserts = INFO;
     ClYamlReader reader;
     ClYamlReaderInit(&reader, "asdf.yaml");
     ClYamlReaderFinish(&reader);

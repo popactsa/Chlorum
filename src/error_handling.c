@@ -6,7 +6,6 @@
 #include <string.h>
 #include "iomanip.h"
 
-const i32  kMaxStrSz = 256;
 ErrorLevel gChecks  = INFO;
 ErrorLevel gAsserts  = INFO;
 
@@ -14,6 +13,8 @@ static const char* ectos(ErrorCode ec) {
     switch (ec) {
     case OK:
         return "OK";
+    case ERRST:
+        return "ERRST(Erroneous state)";
     case MEMALF:
         return "MEMALF(Memory allocation fail)";
     case MEMBND:
@@ -74,13 +75,6 @@ bool leveled_assert(
     if (gAsserts > elvl) {
         return false;
     }
-    if (errno) {
-        if (LOG_ERRNO_RESET) {
-            CHECK_ERRNO(NULL, INFO, "Intentional errno reset to 0."){};
-        } else {
-            errno = 0;
-        }
-    }
     if (!boolean) {
         if (gChecks <= elvl) {
             va_list args;
@@ -102,13 +96,6 @@ ErrorCode check(
     const char* file) {
     if (gAsserts > elvl) {
         return OK;
-    }
-    if (errno) {
-        if (LOG_ERRNO_RESET) {
-            CHECK_ERRNO(NULL, INFO, "Intentional errno reset to 0."){};
-        } else {
-            errno = 0;
-        }
     }
     if (gChecks > elvl) {
         return ec;

@@ -7,14 +7,10 @@
 #include "type_aliases.h"
 
 typedef enum ClYamlEvent_e {
-    CL_YAML_EVENT_UP,
-    CL_YAML_EVENT_DOWN,
-    CL_YAML_EVENT_COMMA,
-    CL_YAML_EVENT_PROP_VALUE_ARRAY_BEGIN,
-    CL_YAML_EVENT_PROP_VALUE_ARRAY_END,
-    CL_YAML_EVENT_PROP_NAME,
-    CL_YAML_EVENT_PROP_VALUE,
-    CL_YAML_EVENT_EOF
+    CL_YAML_EVENT_EOF   = '\0',
+    CL_YAML_EVENT_COMMA = ',',
+    CL_YAML_EVENT_SPACE = ' ',
+    CL_YAML_EVENT_ENDL  = '\n'
 } ClYamlEvent;
 
 typedef struct ClYamlValue_s {
@@ -55,8 +51,8 @@ typedef struct ClYamlReader_s {
         CL_YAML_STATE_EOF
     } state;
 
-    ClArena* hierarchy;
-    i32      hierarchy_depth;
+    ClYamlVariable* hier;
+    i32             hier_depth;
 } ClYamlReader;
 
 #define CL_YAML_HIERARCHY_MAX_SIZE 5
@@ -64,8 +60,9 @@ typedef struct ClYamlReader_s {
 ErrorCode ClYamlReaderInit(
     ClYamlReader* reader,
     const char*   filename);
-ErrorCode ClYamlReaderNext(
-    const ClYamlVariable* variable,
+ErrorCode ClYamlReaderNextLine(
+    ClYamlVariable**      result,
+    const ClYamlVariable* prev,
     ClYamlReader*         reader);
 ErrorCode ClYamlReaderFinish(ClYamlReader* reader);
 

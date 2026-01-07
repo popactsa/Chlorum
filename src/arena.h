@@ -37,6 +37,7 @@ typedef struct ClArenaNode_s {
 
 extern ClArenaNode* arena_nodes_head;
 extern i32          arena_nodes_cnt;
+constexpr f64       kClArenaDefaultResizeRatio = 1.5;
 
 ErrorCode construct_arena(
     ClArena** result,
@@ -45,7 +46,7 @@ ErrorCode construct_arena(
 void destruct_arenas(void);
 
 ErrorCode mem_acquire_on_arena(
-    void**    result,
+    i32*      offset,
     ClArena*  arena,
     const i32 sz);
 

@@ -4,15 +4,15 @@ list(LENGTH SOURCES_C SOURCES_C_SZ)
 message(STATUS "Found source files: ${SOURCES_C}")
 function(add_common_flags target)
     target_compile_options(${target} PRIVATE
-        "-Wall"
-        "-Werror"
-        "-Wextra"
-        "-pedantic"
-        "-march=native"
+        # "-Wall"
+        # "-Werror"
+        # "-Wextra"
+        # "-pedantic"
+        # "-march=native"
         # "-save-temps"
         # "-fverbose-asm"
         # "-masm=intel"
-        "-fdiagnostics-color=always"
+        # "-fdiagnostics-color=always"
         "$<$<CONFIG:Release>:-O2;-DNDEBUG>"
         "$<$<CONFIG:Debug>:-O0;-g;-fsanitize=address>"
         # "$<$<CONFIG:Coverage>:-O0;-g;-fsanitize=address;-fprofile-instr-generate;-fcoverage-mapping;-DDASH_DEBUG>"

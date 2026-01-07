@@ -39,7 +39,7 @@ AllowShortLambdasOnASingleLine: Inline
 AllowShortLoopsOnASingleLine: true
 AllowShortNamespacesOnASingleLine: false
 AlwaysBreakBeforeMultilineStrings: false
-BinPackArguments: false
+BinPackArguments: true
 BinPackParameters: AlwaysOnePerLine
 BitFieldColonSpacing: Both
 BreakBeforeBraces: Custom

@@ -1,25 +1,25 @@
 [
 {
   "directory": "/home/sia/edu/chlorum/build/src",
-  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -Wall -Werror -Wextra -pedantic -march=native -fdiagnostics-color=always -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/arena.c.o -c /home/sia/edu/chlorum/src/arena.c",
+  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/arena.c.o -c /home/sia/edu/chlorum/src/arena.c",
   "file": "/home/sia/edu/chlorum/src/arena.c",
   "output": "src/CMakeFiles/chlorum_lib.dir/arena.c.o"
 },
 {
   "directory": "/home/sia/edu/chlorum/build/src",
-  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -Wall -Werror -Wextra -pedantic -march=native -fdiagnostics-color=always -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/error_handling.c.o -c /home/sia/edu/chlorum/src/error_handling.c",
+  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/error_handling.c.o -c /home/sia/edu/chlorum/src/error_handling.c",
   "file": "/home/sia/edu/chlorum/src/error_handling.c",
   "output": "src/CMakeFiles/chlorum_lib.dir/error_handling.c.o"
 },
 {
   "directory": "/home/sia/edu/chlorum/build/src",
-  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -Wall -Werror -Wextra -pedantic -march=native -fdiagnostics-color=always -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/yaml_reader.c.o -c /home/sia/edu/chlorum/src/yaml_reader.c",
+  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/yaml_reader.c.o -c /home/sia/edu/chlorum/src/yaml_reader.c",
   "file": "/home/sia/edu/chlorum/src/yaml_reader.c",
   "output": "src/CMakeFiles/chlorum_lib.dir/yaml_reader.c.o"
 },
 {
   "directory": "/home/sia/edu/chlorum/build/src",
-  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -Wall -Werror -Wextra -pedantic -march=native -fdiagnostics-color=always -O0 -g -fsanitize=address -o CMakeFiles/chlorum_run.dir/main.c.o -c /home/sia/edu/chlorum/src/main.c",
+  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -O0 -g -fsanitize=address -o CMakeFiles/chlorum_run.dir/main.c.o -c /home/sia/edu/chlorum/src/main.c",
   "file": "/home/sia/edu/chlorum/src/main.c",
   "output": "src/CMakeFiles/chlorum_run.dir/main.c.o"
 }
