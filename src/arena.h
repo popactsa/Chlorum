@@ -4,56 +4,79 @@
 #include "error_handling.h"
 #include "type_aliases.h"
 
-/* ClArena is automatically freed at program exit chunk of memory
- * It is allocated with malloc and stored in ClArenaNode(single-linked list)
- * You should store a pointer to arena
- *
- * construct_arena saves a pointer to allocated arena with given capacity
- *
- * destruct_arenas cleans all arenas in single-linked list stored in
- * arena_nodes_head. Called at program exit
- *
- * mem_acquire_on_arena is not necessary to use arena, but it can be useful to
- * verify, that there is enough memory on arena left unoccupied with meaningful
- * data
- *
- * mem_release_arena just wipes out arena completely freeing all allocated
- * memory
- *
- * mem_realloc_arena is just a realloc of allocated for arena memory. It can be
- * used is pair with mem_release_arena to reset arena
- * */
-
-typedef struct ClArena_s {
+typedef struct Arena_s {
     char* begin;
     i32   sz;
     i32   cap;
-} ClArena;
+} Arena;
 
-typedef struct ClArenaNode_s {
-    ClArena               arena;
-    struct ClArenaNode_s* next;
-} ClArenaNode;
+/* Arbitrary arena manipulation functions */
 
-extern ClArenaNode* arena_nodes_head;
-extern i32          arena_nodes_cnt;
-constexpr f64       kClArenaDefaultResizeRatio = 1.5;
+Error construct_arena(
+    Arena** arena,
+    i32     cap);
 
-ErrorCode construct_arena(
-    ClArena** result,
-    const i32 cap);
+void destruct_arena(Arena* arena);
 
-void destruct_arenas(void);
+Error realloc_arena(
+    Arena* arena,
+    i32    new_cap);
 
-ErrorCode mem_acquire_on_arena(
-    i32*      offset,
-    ClArena*  arena,
-    const i32 sz);
+#define mem_acquire_arena(acquired, sz) \
+    _Generic(                           \
+        (acquired),                     \
+        i32 * *: mem_acquire_arena_i32, \
+        f64 * *: mem_acquire_arena_f64, \
+        default: mem_acquire_arena_void)(acquired, sz)
 
-ErrorCode mem_release_arena(ClArena* arena);
+Error mem_acquire_arena_void(
+    void** acquired,
+    Arena* arena,
+    i32    sz);
 
-ErrorCode mem_realloc_arena(
-    ClArena*  arena,
-    const i32 new_cap);
+static inline Error mem_acquire_arena_i32(
+    i32**  acquired,
+    Arena* arena,
+    i32    sz) {
+    return mem_acquire_arena_void((void**)acquired, arena, sizeof(i32) * sz);
+}
+
+static inline Error mem_acquire_arena_f64(
+    f64**  acquired,
+    Arena* arena,
+    i32    sz) {
+    return mem_acquire_arena_void((void**)acquired, arena, sizeof(f64) * sz);
+}
+
+Error mem_release_arena(Arena* arena);
+
+/* Default arena manipulation functions */
+
+#define mem_acquire_dft_arena(acquired, sz) \
+    _Generic(                               \
+        (acquired),                         \
+        i32 * *: mem_acquire_dft_arena_i32, \
+        f64 * *: mem_acquire_dft_arena_f64, \
+        default: mem_acquire_dft_arena_void)(acquired, sz)
+
+Error mem_acquire_dft_arena_void(
+    void** acquired,
+    i32    sz);
+
+static inline Error mem_acquire_dft_arena_i32(
+    i32** acquired,
+    i32   sz) {
+    return mem_acquire_dft_arena_void((void**)acquired, sizeof(i32) * sz);
+}
+
+static inline Error mem_acquire_dft_arena_f64(
+    f64** acquired,
+    i32   sz) {
+    return mem_acquire_dft_arena_void((void**)acquired, sizeof(f64) * sz);
+}
+
+Error realloc_dft_arena(i32 new_cap);
+
+Error mem_release_dft_arena(void);
 
 #endif /* ARENA_H */

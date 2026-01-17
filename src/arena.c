@@ -1,96 +1,120 @@
 #include "arena.h"
 #include <stdlib.h>
-#include "error_handling.h"
+#include "auxiliary_utilities.h"
 
-ClArenaNode* arena_nodes_head = NULL;
-i32          arena_nodes_cnt  = 0;
+static Arena dft_arena        = {0};
+static bool  dft_arena_in_use = false;
 
-ErrorCode construct_arena(
-    ClArena** result,
-    const i32 cap) {
-    ClArenaNode* arena_node;
-    ClArena*     arena;
-    ASSERT(result, ERROR, "Nowhere to return result. NULL received") {
-        return CONTRV;
-    }
-    arena_node = malloc(sizeof(ClArenaNode));
-    ASSERT(arena_node, WARN, "Can't allocate arena node") {
-        return MEMALF;
-    }
-    arena        = &arena_node->arena;
-    arena->begin = malloc(cap);
-    ASSERT(arena->begin, ERROR, "Arena allocation fail") {
-        free(arena_node);
-        return MEMALF;
-    }
-    arena->cap       = cap;
-    arena->sz        = 0;
-    arena_node->next = arena_nodes_head;
-    arena_nodes_head = arena_node;
-
-    if (arena_nodes_cnt == 0) {
-        CHECK(atexit(destruct_arenas), EXIT, NULL) {}
-    }
-    ++arena_nodes_cnt;
-    *result = arena;
-    return OK;
-}
-
-void destruct_arenas(void) {
-    ClArenaNode* next;
-    while (arena_nodes_cnt) {
-        next = arena_nodes_head->next;
-        if (arena_nodes_head->arena.begin) {
-            free(arena_nodes_head->arena.begin);
+Error construct_arena(
+    Arena** arena,
+    i32     cap) {
+    {
+        bool pre_ok  = true;
+        pre_ok      &= arena != NULL;
+        pre_ok      &= cap >= 0;
+        if (!pre_ok) {
+            return (Error){.ec = PRE, .lvl = WARN};
         }
-        free(arena_nodes_head);
-        arena_nodes_head = next;
-        --arena_nodes_cnt;
     }
+    Arena* maybe_arena;
+    maybe_arena = malloc(sizeof(Arena));
+    if (!maybe_arena) {
+        return (Error){.ec = MALLOC, .lvl = WARN};
+    }
+    maybe_arena->begin = malloc(sizeof(cap));
+    if (!maybe_arena) {
+        free(maybe_arena);
+        return (Error){.ec = MALLOC, .lvl = WARN};
+    }
+    maybe_arena->cap = cap;
+    maybe_arena->sz  = 0;
+    *arena           = maybe_arena;
+    return (Error){0};
 }
 
-ErrorCode mem_acquire_on_arena(
-    i32* offset,
-    ClArena*  arena,
-    const i32 sz) {
-    ASSERT(
-        arena->cap >= arena->sz + sz,
-        WARN,
-        "Arena can't allocate requested sz") {
-        return MEMALF;
+void destruct_arena(Arena* arena) {
+    (void)mem_release_arena(arena);
+    free(arena);
+}
+
+Error realloc_arena(
+    Arena* arena,
+    i32    new_cap) {
+    void* new_begin;
+    {
+        bool pre_ok  = true;
+        pre_ok      &= arena != NULL;
+        pre_ok      &= new_cap >= 0;
+        if (!pre_ok) {
+            return (Error){.ec = PRE, .lvl = WARN};
+        }
     }
-    ASSERT(arena, WARN, "NULL as ptr to arena passed") {
-        return CONTRV;
+    new_begin = realloc(arena->begin, new_cap);
+    if (!new_begin) {
+        mem_release_arena(arena);
+        return (Error){.ec = MALLOC, .lvl = ERROR};
     }
-    if (offset) {
-        *offset = arena->sz;
+    arena->begin = new_begin;
+    arena->cap   = new_cap;
+    arena->sz    = min_i32(arena->sz, new_cap);
+    return (Error){0};
+}
+
+Error mem_acquire_arena_void(
+    void** acquired,
+    Arena* arena,
+    i32    sz) {
+    {
+        bool pre_ok  = true;
+        pre_ok      &= acquired != NULL;
+        pre_ok      &= arena != NULL;
+        pre_ok      &= sz >= 0;
+        pre_ok      &= arena->sz >= 0;
+        pre_ok      &= arena->cap >= arena->sz + sz;
+        if (!pre_ok) {
+            return (Error){.ec = PRE, .lvl = WARN};
+        }
     }
+    if (sz == 0) {
+        *acquired = NULL;
+        return (Error){.ec   = PRE,
+                       .lvl  = INFO,
+                       .desc = "Trying to acquire 0 bytes on arena"};
+    }
+    *acquired  = (void*)(arena->begin + arena->sz);
     arena->sz += sz;
-    return OK;
+    return (Error){0};
 }
 
-// TODO: Fix nodes deallocation
-ErrorCode mem_release_arena(ClArena* arena) {
-    ASSERT(arena, WARN, "NULL as ptr to arena passed") {
-        return CONTRV;
+Error mem_release_arena(Arena* arena) {
+    {
+        bool pre_ok  = true;
+        pre_ok      &= arena != NULL;
+        if (!pre_ok) {
+            return (Error){.ec = PRE, .lvl = WARN};
+        }
     }
     free(arena->begin);
-    arena->begin = NULL;
-    arena->sz    = 0;
-    arena->cap   = 0;
-    return OK;
+    arena->cap = 0;
+    arena->sz  = 0;
+    return (Error){0};
 }
 
-ErrorCode mem_realloc_arena(
-    ClArena*  arena,
-    const i32 new_cap) {
-    char* realloced;
-    ASSERT(arena, WARN, "NULL as ptr to arena passed") {
-        return CONTRV;
-    }
-    realloced = realloc(arena->begin, new_cap);
-    ASSERT(realloced, WARN, "Realloc failed") {}
-    arena->begin = realloced;
-    arena->cap   = new_cap;
-    return OK;
+Error mem_acquire_dft_arena_void(
+    void** acquired,
+    i32    sz) {
+    return mem_acquire_arena_void(acquired, &dft_arena, sz);
+}
+
+Error realloc_dft_arena(
+    i32    new_cap) {
+    return realloc_arena(&dft_arena, new_cap);
+}
+
+Error mem_release_dft_arena(void) {
+    return mem_release_arena(&dft_arena);
+}
+
+inline static void destruct_dft_arena() {
+    free(dft_arena.begin);
 }
