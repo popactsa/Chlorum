@@ -15,6 +15,8 @@ static inline const char* get_ec_str(const ErrorCode ec) {
         return "MALLOC";
     case PRE:
         return "PRE";
+    case UNEXP:
+        return "UNEXP";
     default:
         return "<Not provided>";
     }
@@ -25,9 +27,9 @@ static const char* const error_lvl[] = {"INFO", "WARN", "ERROR", "KILL"};
 static const char* const error_lvl_color[] = {
     ANSI_BLUE, ANSI_YELLOW, ANSI_RED, ANSI_RED};
 
-void log_error(
+void log_error_if(
     const Error error,
-    int         line,
+    const i32         line,
     const char* file) {
     if (!error.ec) {
         return;

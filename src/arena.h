@@ -13,38 +13,38 @@ typedef struct Arena_s {
 /* Arbitrary arena manipulation functions */
 
 Error construct_arena(
-    Arena** arena,
-    i32     cap);
+    Arena*    arena,
+    const i32 cap);
 
 void destruct_arena(Arena* arena);
 
 Error realloc_arena(
-    Arena* arena,
-    i32    new_cap);
+    Arena*    arena,
+    const i32 new_cap);
 
-#define mem_acquire_arena(acquired, sz) \
-    _Generic(                           \
-        (acquired),                     \
-        i32 * *: mem_acquire_arena_i32, \
-        f64 * *: mem_acquire_arena_f64, \
-        default: mem_acquire_arena_void)(acquired, sz)
+#define mem_acquire_arena(acquired, arena, sz) \
+    _Generic(                                  \
+        (acquired),                            \
+        i32 * *: mem_acquire_arena_i32,        \
+        f64 * *: mem_acquire_arena_f64,        \
+        default: mem_acquire_arena_void)(acquired, arena, sz)
 
 Error mem_acquire_arena_void(
-    void** acquired,
-    Arena* arena,
-    i32    sz);
+    void**    acquired,
+    Arena*    arena,
+    const i32 sz);
 
 static inline Error mem_acquire_arena_i32(
-    i32**  acquired,
-    Arena* arena,
-    i32    sz) {
+    i32**     acquired,
+    Arena*    arena,
+    const i32 sz) {
     return mem_acquire_arena_void((void**)acquired, arena, sizeof(i32) * sz);
 }
 
 static inline Error mem_acquire_arena_f64(
-    f64**  acquired,
-    Arena* arena,
-    i32    sz) {
+    f64**     acquired,
+    Arena*    arena,
+    const i32 sz) {
     return mem_acquire_arena_void((void**)acquired, arena, sizeof(f64) * sz);
 }
 
@@ -60,22 +60,22 @@ Error mem_release_arena(Arena* arena);
         default: mem_acquire_dft_arena_void)(acquired, sz)
 
 Error mem_acquire_dft_arena_void(
-    void** acquired,
-    i32    sz);
+    void**    acquired,
+    const i32 sz);
 
 static inline Error mem_acquire_dft_arena_i32(
-    i32** acquired,
-    i32   sz) {
+    i32**     acquired,
+    const i32 sz) {
     return mem_acquire_dft_arena_void((void**)acquired, sizeof(i32) * sz);
 }
 
 static inline Error mem_acquire_dft_arena_f64(
-    f64** acquired,
-    i32   sz) {
+    f64**     acquired,
+    const i32 sz) {
     return mem_acquire_dft_arena_void((void**)acquired, sizeof(f64) * sz);
 }
 
-Error realloc_dft_arena(i32 new_cap);
+Error realloc_dft_arena(const i32 new_cap);
 
 Error mem_release_dft_arena(void);
 

@@ -13,9 +13,9 @@
 },
 {
   "directory": "/home/sia/edu/chlorum/build/src",
-  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/error_handling2.c.o -c /home/sia/edu/chlorum/src/error_handling2.c",
-  "file": "/home/sia/edu/chlorum/src/error_handling2.c",
-  "output": "src/CMakeFiles/chlorum_lib.dir/error_handling2.c.o"
+  "command": "clang  -I/home/sia/edu/chlorum/src -std=c2x -O0 -g -fsanitize=address -o CMakeFiles/chlorum_lib.dir/map.c.o -c /home/sia/edu/chlorum/src/map.c",
+  "file": "/home/sia/edu/chlorum/src/map.c",
+  "output": "src/CMakeFiles/chlorum_lib.dir/map.c.o"
 },
 {
   "directory": "/home/sia/edu/chlorum/build/src",

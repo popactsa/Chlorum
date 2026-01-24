@@ -1,5 +1,7 @@
-#ifndef ERROR_HANDLING2_H
-#define ERROR_HANDLING2_H
+#ifndef ERROR_HANDLING_H
+#define ERROR_HANDLING_H
+
+#include "type_aliases.h"
 
 typedef enum ErrorLevel_e {
     INFO,     // Any helpful logs
@@ -14,20 +16,29 @@ typedef enum ErrorCode_e {
     OK,
     UNKNOWN,
     MALLOC,
-    PRE
+    PRE,
+    UNEXP
 } ErrorCode;
 
+// TODO: Support formatting
 typedef struct Error_s {
     ErrorLevel  lvl;
     ErrorCode   ec;
     const char* desc;
 } Error;
 
-#define LOG_ERROR(error) \
-    { log_error(error, __LINE__, __FILE__); }
-void log_error(
+#define LOG_ERROR_IF(e_) \
+    { log_error_if(e_, __LINE__, __FILE__); }
+void log_error_if(
     const Error error,
-    int         line,
+    const i32   line,
     const char* file);
 
-#endif /* ERROR_HANDLING2_H */
+#define RETHROW_IF(e_) \
+    {                  \
+        if (e_.ec) {   \
+            return e_; \
+        }              \
+    }
+
+#endif /* ERROR_HANDLING_H */
